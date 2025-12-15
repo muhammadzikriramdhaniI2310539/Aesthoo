@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
  "dependencies": {
-  "react": "^18.2.0",        <-- Perhatikan koma ini
-  "react-dom": "^18.2.0",    <-- Perhatikan koma ini
-  "lucide-react": "^0.294.0", <-- KASIH KOMA DISINI
+  "react": "^18.2.0",        
+  "react-dom": "^18.2.0",    
+  "lucide-react": "^0.294.0", 
   "@vercel/analytics": "^1.4.0"
 },
   "devDependencies": {
@@ -30,3 +30,4 @@
   }
 
 }
+
