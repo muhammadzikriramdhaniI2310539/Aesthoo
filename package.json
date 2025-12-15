@@ -9,11 +9,12 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
+ "dependencies": {
+  "react": "^18.2.0",        <-- Perhatikan koma ini
+  "react-dom": "^18.2.0",    <-- Perhatikan koma ini
+  "lucide-react": "^0.294.0", <-- KASIH KOMA DISINI
+  "@vercel/analytics": "^1.4.0"
+},
   "devDependencies": {
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
@@ -27,4 +28,5 @@
     "tailwindcss": "^3.3.5",
     "vite": "^5.0.0"
   }
+
 }
