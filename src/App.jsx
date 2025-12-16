@@ -28,17 +28,19 @@ const App = () => {
       cssContainer: 'w-24 h-[320px] flex-col p-2 gap-2 bg-white shadow-xl',
       cssPhoto: 'w-full h-16',
       bgColor: 'bg-white',
-      textColor: 'text-black'
+      textColor: 'text-black',
+      disabled: false
     },
     { 
-      id: 'classic-black', 
-      name: 'Classic Black', 
-      type: 'vertical', 
-      desc: 'Bold black vertical strip.',
-      cssContainer: 'w-24 h-[320px] flex-col p-2 gap-2 bg-zinc-900 shadow-xl border-gray-800',
-      cssPhoto: 'w-full h-16',
-      bgColor: 'bg-black',
-      textColor: 'text-white'
+      id: 'coming-soon', 
+      name: 'Coming Soon', 
+      type: 'placeholder', 
+      desc: 'More styles coming soon.',
+      cssContainer: 'w-24 h-[320px] flex items-center justify-center bg-zinc-50 border border-dashed border-zinc-300 shadow-sm',
+      cssPhoto: '',
+      bgColor: 'bg-gray-100',
+      textColor: 'text-gray-400',
+      disabled: true
     }
   ];
 
@@ -798,20 +800,33 @@ const App = () => {
             <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-12">Choose Canvas</h2>
             <div className="flex gap-12 items-center justify-center mb-16 flex-wrap">
                 {layouts.map((l) => (
-                    <div key={l.id} onClick={() => setSelectedLayout(l.id)} 
-                      className={`cursor-pointer group flex flex-col items-center justify-center gap-6 transition-all duration-300 ${selectedLayout === l.id ? 'scale-105 opacity-100' : 'opacity-60 hover:opacity-100'}`}>
-                        <div className={`${l.cssContainer} transition-transform group-hover:-translate-y-2 border ${l.id === 'classic-white' ? 'border-gray-200' : 'border-gray-800'}`}>
-                             {[...Array(4)].map((_,i) => (
-                               <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}>
-                                  <div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div>
+                    <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} 
+                      className={`
+                        flex flex-col items-center justify-center gap-6 transition-all duration-300 
+                        ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'}
+                        ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}
+                      `}>
+                        <div className={`${l.cssContainer} transition-transform ${!l.disabled ? 'group-hover:-translate-y-2' : ''} border ${l.id === 'classic-white' ? 'border-gray-200' : 'border-gray-200'}`}>
+                             {!l.disabled ? (
+                               <>
+                                 {[...Array(4)].map((_,i) => (
+                                   <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}>
+                                      <div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div>
+                                   </div>
+                                 ))}
+                                 <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}>
+                                    <span className="font-title text-[10px]">Aestho.</span>
+                                 </div>
+                               </>
+                             ) : (
+                               <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400">
+                                   <span className="font-serif text-6xl italic">?</span>
+                                   <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed">Coming<br/>Soon</span>
                                </div>
-                             ))}
-                             <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}>
-                                <span className="font-title text-[10px]">Aestho.</span>
-                             </div>
+                             )}
                         </div>
                         <div className="text-center">
-                          <span className="font-modern text-xs tracking-widest uppercase block border-b border-transparent group-hover:border-black pb-1">{l.name}</span>
+                          <span className={`font-modern text-xs tracking-widest uppercase block border-b border-transparent pb-1 ${!l.disabled ? 'group-hover:border-black' : ''}`}>{l.name}</span>
                           <span className="font-serif text-[10px] text-gray-500 italic mt-1 block">{l.desc}</span>
                         </div>
                     </div>
