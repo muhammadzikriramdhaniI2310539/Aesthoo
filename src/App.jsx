@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Aperture } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -20,7 +20,7 @@ const App = () => {
     },
     { 
       id: 'classic-black', 
-      name: 'Classic Black', 
+      name: 'Classic Black',
       type: 'vertical', 
       desc: 'Bold black vertical strip.',
       cssContainer: 'w-24 h-[320px] flex-col p-2 gap-2 bg-zinc-900 shadow-xl border-gray-800',
@@ -161,9 +161,8 @@ const App = () => {
     }
   ];
 
-  // E. Template Strip (Updated - Aestho Beach REMOVED, 10 New Frames ADDED)
+  // E. Template Strip (Updated)
   const stripTemplates = [
-      { id: 'simple-white', name: 'Simple White', type: 'css', bgColor: '#ffffff', borderColor: '#e5e7eb', textColor: 'black' },
       { 
           id: 'aestho-signature', 
           name: 'Aestho Signature', 
@@ -173,7 +172,23 @@ const App = () => {
           cssContainer: 'p-3 gap-3 bg-white', 
           photoRadius: 'rounded-xl' 
       },
-      // 1. GENSHIN THEME (Fun)
+      { 
+          id: 'cinnamon-roll', 
+          name: 'Cloudy Frame', 
+          type: 'css', 
+          bgColor: '#ffffff', 
+          textColor: '#0ea5e9', // sky-500
+          // Grid pattern background created with CSS gradient
+          cssContainer: 'p-4 gap-3',
+          customStyle: {
+              backgroundImage: 'linear-gradient(#bae6fd 2px, transparent 2px), linear-gradient(90deg, #bae6fd 2px, transparent 2px)',
+              backgroundSize: '20px 20px',
+              backgroundColor: 'white'
+          },
+          photoRadius: 'rounded-2xl border-4 border-sky-100 shadow-sm', // Rounded corner for photos
+          sticker: <Cloud className="text-sky-300 w-8 h-8 fill-sky-100 drop-shadow-sm" />
+      },
+      // 1. GENSHIN THEME (Hydro/Blue)
       { 
           id: 'frame-genshin', 
           name: 'Teyvat Blue', 
@@ -184,7 +199,7 @@ const App = () => {
           photoRadius: 'rounded-lg',
           sticker: <img src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-12 h-auto opacity-80" alt="Genshin" />
       },
-      // 2. HSR THEME (Space/Fun)
+      // 2. HSR THEME (Space/Dark)
       { 
           id: 'frame-hsr', 
           name: 'Astral Express', 
@@ -195,7 +210,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <img src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-10 h-auto opacity-90 invert" alt="HSR" />
       },
-      // 3. JJK THEME (Serious/Cool)
+      // 3. JJK THEME (Cursed/RedBlack)
       { 
           id: 'frame-jjk', 
           name: 'Jujutsu High', 
@@ -206,7 +221,7 @@ const App = () => {
           photoRadius: 'rounded-none',
           sticker: <Flame className="text-red-600 w-6 h-6 animate-pulse" />
       },
-      // 4. AOT THEME (Serious/Earth)
+      // 4. AOT THEME (Scout/GreenBrown)
       { 
           id: 'frame-aot', 
           name: 'Survey Corps', 
@@ -217,7 +232,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <Swords className="text-amber-100 w-6 h-6" />
       },
-      // 5. PINK COQUETTE (Cute)
+      // 5. PINK COQUETTE
       { 
           id: 'frame-pink', 
           name: 'Coquette Bow', 
@@ -228,7 +243,7 @@ const App = () => {
           photoRadius: 'rounded-[2rem]',
           sticker: <Heart className="text-pink-400 w-6 h-6 fill-pink-200" />
       },
-      // 6. RETRO YELLOW (Fun/Pop)
+      // 6. RETRO YELLOW
       { 
           id: 'frame-retro', 
           name: 'Retro 90s', 
@@ -239,18 +254,18 @@ const App = () => {
           photoRadius: 'rounded-lg',
           sticker: <Sun className="text-orange-500 w-8 h-8" />
       },
-      // 7. NOIR FILM (Serious/Vintage)
+      // 7. MINT FRESH
       { 
-          id: 'frame-noir', 
-          name: 'Noir Film', 
+          id: 'frame-mint', 
+          name: 'Minty Fresh', 
           type: 'css', 
-          bgColor: '#18181b', 
-          textColor: '#ffffff', 
-          cssContainer: 'p-3 gap-0 bg-zinc-950 border-x-4 border-black', 
-          photoRadius: 'rounded-none',
-          sticker: <Aperture className="text-zinc-600 w-5 h-5" />
+          bgColor: '#ecfdf5', 
+          textColor: '#047857', 
+          cssContainer: 'p-3 gap-3 bg-emerald-100 border border-emerald-300', 
+          photoRadius: 'rounded-xl',
+          sticker: <Sparkles className="text-emerald-500 w-5 h-5" />
       },
-      // 8. CYBERPUNK NEON (Edgy/Fun)
+      // 8. CYBERPUNK NEON
       { 
           id: 'frame-neon', 
           name: 'Neon City', 
@@ -261,7 +276,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <Zap className="text-yellow-400 w-6 h-6 fill-yellow-400" />
       },
-      // 9. PURPLE DREAM (Soft/Cute)
+      // 9. PURPLE DREAM
       { 
           id: 'frame-purple', 
           name: 'Lavender Haze', 
@@ -272,7 +287,7 @@ const App = () => {
           photoRadius: 'rounded-2xl',
           sticker: <Moon className="text-purple-400 w-5 h-5" />
       },
-      // 10. CLOUDY BLUE (Soft/Cute)
+      // 10. CLOUDY BLUE
       { 
           id: 'frame-cloud', 
           name: 'Sky Blue', 
@@ -282,6 +297,17 @@ const App = () => {
           cssContainer: 'p-3 gap-3 bg-sky-100 border-4 border-white', 
           photoRadius: 'rounded-3xl',
           sticker: <Cloud className="text-white w-8 h-8 fill-white drop-shadow-md" />
+      },
+      // 11. HALLOWEEN GHOST
+       { 
+          id: 'frame-spooky', 
+          name: 'Spooky Cute', 
+          type: 'css', 
+          bgColor: '#27272a', 
+          textColor: '#a78bfa', 
+          cssContainer: 'p-3 gap-3 bg-zinc-800 border-dashed border-2 border-zinc-600', 
+          photoRadius: 'rounded-md',
+          sticker: <Ghost className="text-white w-6 h-6" />
       }
   ];
 
@@ -295,13 +321,13 @@ const App = () => {
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(stripTemplates[0]);
+
   const [currentFilter, setCurrentFilter] = useState(filters[0]);
   const [timerDuration, setTimerDuration] = useState(3);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(0);
   const [capturedPhotos, setCapturedPhotos] = useState([]); 
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
-  const [isEntering, setIsEntering] = useState(false); // New state for loading animation
   
   const MAX_PHOTOS = 8;
   const videoRef = useRef(null);
@@ -311,6 +337,7 @@ const App = () => {
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
 
+  // Helper: Get Overlay Image
   const getOverlayImage = (character, photoIndex) => {
     if (!character || !character.overlayImg) return null;
     if (Array.isArray(character.overlayImg)) {
@@ -329,6 +356,7 @@ const App = () => {
       return character.overlayImg;
   }
 
+  // --- CAMERA LOGIC ---
   const [stream, setStream] = useState(null);
   const [cameraError, setCameraError] = useState(false);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
@@ -381,17 +409,7 @@ const App = () => {
   }, [stream]);
 
   const triggerTransition = (callback) => { callback(); };
-  
-  // MODIFIED HANDLE START WITH LOADING ANIMATION
-  const handleStart = () => {
-    if (isEntering) return;
-    setIsEntering(true);
-    setTimeout(() => {
-        triggerTransition(() => setCurrentView('layout'));
-        setIsEntering(false);
-    }, 2000); // 2 seconds loading delay
-  };
-
+  const handleStart = () => triggerTransition(() => setCurrentView('layout'));
   const handleLayoutConfirm = () => selectedLayout && triggerTransition(() => setCurrentView('mode'));
   const handleModeConfirm = () => {
     setCapturedPhotos([]); 
@@ -515,19 +533,10 @@ const App = () => {
         .font-modern { font-family: 'Syncopate', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes line-loading {
-          0% { width: 0; left: 0; right: auto; }
-          50% { width: 100%; left: 0; right: auto; }
-          51% { width: 100%; left: auto; right: 0; }
-          100% { width: 0; left: auto; right: 0; }
-        }
-
-        .animate-line-loading {
-            animation: line-loading 1.5s infinite ease-in-out;
-        }
       `}</style>
 
+      {/* --- VIEW 1 to 7 are identical to previous, included here for completeness --- */}
+      
       {currentView === 'home' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full text-center p-4 bg-[#FDFDFD] text-black">
            <div className="relative mb-4 cursor-default select-none">
@@ -535,25 +544,8 @@ const App = () => {
                <h1 className="font-title text-[5rem] md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
            </div>
            <p className="font-serif text-lg md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
-           
-           {/* MODIFIED BUTTON WITH SINGLE LOADING LINE */}
-           <button onClick={handleStart} disabled={isEntering} className="group relative px-8 py-3 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black hover:text-black/70 transition-colors overflow-hidden">
-             
-             {/* Text Normal */}
-             <span className={`relative z-10 transition-all duration-500 ${isEntering ? 'opacity-0 translate-y-2' : 'opacity-100'}`}>Enter Studio</span>
-             
-             {/* Text Loading */}
-             <span className={`absolute inset-0 flex items-center justify-center font-modern text-[10px] tracking-widest transition-all duration-500 ${isEntering ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-                LOADING
-             </span>
-
-             {/* Static Background Line (Always visible track) */}
-             <span className="absolute bottom-0 left-0 w-full h-[1px] bg-black/20"></span>
-
-             {/* Active Line (Single line at bottom: Hover effect OR Loading effect) */}
-             <span className={`absolute bottom-0 left-0 h-[1px] bg-black transition-all duration-500 ease-out 
-                ${isEntering ? 'animate-line-loading' : 'w-0 group-hover:w-full'}`}>
-             </span>
+           <button onClick={handleStart} className="group relative px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] border-b border-black/20 hover:border-black transition-all">
+             Enter Studio
            </button>
         </main>
       )}
@@ -670,6 +662,7 @@ const App = () => {
         </main>
       )}
 
+      {/* --- VIEW 6: CAMERA SESSION --- */}
       {currentView === 'camera-session' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden justify-between">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white pointer-events-none"></div>
@@ -743,7 +736,8 @@ const App = () => {
         </main>
       )}
 
-     {currentView === 'result-selection' && (
+      {/* --- VIEW 7: RESULT SELECTION --- */}
+      {currentView === 'result-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-3xl">Select & Arrange</h1>
@@ -930,5 +924,4 @@ const App = () => {
   );
 };
 
-export default App;
 export default App;
