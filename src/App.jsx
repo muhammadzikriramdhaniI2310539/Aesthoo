@@ -1158,7 +1158,8 @@ const App = () => {
               </div>
 
               {/* Responsive Layout for Selection */}
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full p-4 md:p-8 gap-8 md:gap-12 justify-center items-center overflow-y-auto">
+              {/* Changed justify-center to justify-evenly on mobile to avoid squishing */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full p-4 md:p-8 gap-8 md:gap-12 justify-evenly md:justify-center items-center overflow-y-auto">
                   
                   {/* Strip Container */}
                   <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
@@ -1166,7 +1167,7 @@ const App = () => {
                       
                       {/* Scale container slightly down on mobile to fit */}
                       <div className={`
-                          w-[120px] md:w-[140px] h-[400px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto
+                          w-[100px] md:w-[140px] h-[340px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto
                       `}>
                           {selectedStripPhotos.map((photoData, index) => (
                               <div 
@@ -1244,7 +1245,7 @@ const App = () => {
           </main>
       )}
 
-      {/* --- VIEW 8: TEMPLATE SELECTION --- */}
+      {/* --- VIEW 8: TEMPLATE SELECTION (UPDATED RESPONSIVE) --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
@@ -1254,31 +1255,34 @@ const App = () => {
                   </button>
               </div>
               
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-4 md:gap-10 p-4 overflow-hidden">
+              {/* Responsive layout with justify-evenly on mobile to avoid overlap */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-evenly md:justify-center items-center gap-4 md:gap-10 p-4 overflow-hidden">
                   
                   {/* LEFT: LIVE PREVIEW (LARGE) */}
-                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative order-2 md:order-1">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 md:mb-8">YOUR RESULT</span>
+                  {/* Added explicit height constraints for mobile */}
+                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[50%] md:h-full relative order-1 md:order-1">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:mb-8">YOUR RESULT</span>
                       {/* Scale down to fit comfortably on mobile */}
-                      <div className="transform scale-90 md:scale-100 origin-center">
+                      <div className="transform scale-[0.6] md:scale-100 origin-center">
                         <AesthoStrip 
                             template={selectedTemplate} 
                             photos={selectedStripPhotos} 
                             mode={selectedMode} 
                             characterData={selectedCharacterData} 
-                            scale={0.25} // Slightly smaller scale for general fit
+                            scale={0.25} // Base scale
                         />
                       </div>
                   </div>
 
                   {/* RIGHT: TEMPLATE CHOOSER */}
-                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-1 md:order-2 py-4">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 md:absolute md:top-10">SELECT FRAME</span>
+                  {/* Fixed height at bottom for mobile */}
+                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[40%] md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-2 md:order-2 py-2">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:absolute md:top-10">SELECT FRAME</span>
                       
-                      <div className="w-full md:max-w-lg h-auto md:h-[70vh] overflow-x-auto snap-x snap-mandatory flex items-center gap-6 md:gap-10 hide-scrollbar px-8 md:px-20 py-4 md:py-20">
+                      <div className="w-full md:max-w-lg h-full overflow-x-auto snap-x snap-mandatory flex items-center gap-6 md:gap-10 hide-scrollbar px-8 md:px-20 py-2 md:py-20">
                           {stripTemplates.map((tpl) => (
-                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
-                                  <div className="pointer-events-none border border-zinc-200 shadow-sm bg-white overflow-hidden">
+                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
+                                  <div className="pointer-events-none border border-zinc-200 shadow-sm bg-white overflow-hidden transform scale-75 md:scale-100 origin-center">
                                        <AesthoStrip 
                                             template={tpl} 
                                             photos={selectedStripPhotos} 
@@ -1288,7 +1292,7 @@ const App = () => {
                                             shadow={false}
                                        />
                                   </div>
-                                  <span className="font-modern text-[8px] uppercase text-center mt-2 tracking-widest text-zinc-500">{tpl.name}</span>
+                                  <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500">{tpl.name}</span>
                               </div>
                           ))}
                       </div>
@@ -1297,7 +1301,7 @@ const App = () => {
           </main>
       )}
 
-      {/* --- VIEW 9: FINAL RESULT --- */}
+      {/* --- VIEW 9: FINAL RESULT (UPDATED RESPONSIVE) --- */}
       {currentView === 'final-result' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
              {/* Header */}
@@ -1315,33 +1319,39 @@ const App = () => {
               </div>
 
               {/* Main Content: Side-by-Side (Stacked on Mobile) */}
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-12 md:gap-16 p-8 overflow-y-auto bg-gray-50">
+              {/* Added pb-20 for scrolling space on mobile */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
                   
                   {/* LEFT: STATIC RESULT */}
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
-                      <AesthoStrip 
-                        template={selectedTemplate} 
-                        photos={selectedStripPhotos} 
-                        mode={selectedMode} 
-                        characterData={selectedCharacterData} 
-                        scale={0.25} 
-                      />
+                      {/* Scale specifically for mobile visibility */}
+                      <div className="transform scale-[0.85] md:scale-100 origin-top">
+                        <AesthoStrip 
+                            template={selectedTemplate} 
+                            photos={selectedStripPhotos} 
+                            mode={selectedMode} 
+                            characterData={selectedCharacterData} 
+                            scale={0.25} 
+                        />
+                      </div>
                   </div>
 
                   {/* RIGHT: LIVE MOMENT (MOVING STRIP) */}
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">
                         LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                       </span>
-                      <AesthoStrip 
-                            template={selectedTemplate} 
-                            photos={selectedStripPhotos} 
-                            clips={capturedClips} 
-                            mode={selectedMode} 
-                            characterData={selectedCharacterData} 
-                            scale={0.25}
-                       />
+                      <div className="transform scale-[0.85] md:scale-100 origin-top">
+                        <AesthoStrip 
+                                template={selectedTemplate} 
+                                photos={selectedStripPhotos} 
+                                clips={capturedClips} 
+                                mode={selectedMode} 
+                                characterData={selectedCharacterData} 
+                                scale={0.25}
+                        />
+                      </div>
                   </div>
 
               </div>
