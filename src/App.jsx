@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Aperture } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -20,7 +20,7 @@ const App = () => {
     },
     { 
       id: 'classic-black', 
-      name: 'Classic Black',
+      name: 'Classic Black', 
       type: 'vertical', 
       desc: 'Bold black vertical strip.',
       cssContainer: 'w-24 h-[320px] flex-col p-2 gap-2 bg-zinc-900 shadow-xl border-gray-800',
@@ -161,8 +161,9 @@ const App = () => {
     }
   ];
 
-  // E. Template Strip (Updated)
+  // E. Template Strip (Updated - Aestho Beach REMOVED, 10 New Frames ADDED)
   const stripTemplates = [
+      { id: 'simple-white', name: 'Simple White', type: 'css', bgColor: '#ffffff', borderColor: '#e5e7eb', textColor: 'black' },
       { 
           id: 'aestho-signature', 
           name: 'Aestho Signature', 
@@ -172,23 +173,7 @@ const App = () => {
           cssContainer: 'p-3 gap-3 bg-white', 
           photoRadius: 'rounded-xl' 
       },
-      { 
-          id: 'cinnamon-roll', 
-          name: 'Cloudy Frame', 
-          type: 'css', 
-          bgColor: '#ffffff', 
-          textColor: '#0ea5e9', // sky-500
-          // Grid pattern background created with CSS gradient
-          cssContainer: 'p-4 gap-3',
-          customStyle: {
-              backgroundImage: 'linear-gradient(#bae6fd 2px, transparent 2px), linear-gradient(90deg, #bae6fd 2px, transparent 2px)',
-              backgroundSize: '20px 20px',
-              backgroundColor: 'white'
-          },
-          photoRadius: 'rounded-2xl border-4 border-sky-100 shadow-sm', // Rounded corner for photos
-          sticker: <Cloud className="text-sky-300 w-8 h-8 fill-sky-100 drop-shadow-sm" />
-      },
-      // 1. GENSHIN THEME (Hydro/Blue)
+      // 1. GENSHIN THEME (Fun)
       { 
           id: 'frame-genshin', 
           name: 'Teyvat Blue', 
@@ -199,7 +184,7 @@ const App = () => {
           photoRadius: 'rounded-lg',
           sticker: <img src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-12 h-auto opacity-80" alt="Genshin" />
       },
-      // 2. HSR THEME (Space/Dark)
+      // 2. HSR THEME (Space/Fun)
       { 
           id: 'frame-hsr', 
           name: 'Astral Express', 
@@ -210,7 +195,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <img src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-10 h-auto opacity-90 invert" alt="HSR" />
       },
-      // 3. JJK THEME (Cursed/RedBlack)
+      // 3. JJK THEME (Serious/Cool)
       { 
           id: 'frame-jjk', 
           name: 'Jujutsu High', 
@@ -221,7 +206,7 @@ const App = () => {
           photoRadius: 'rounded-none',
           sticker: <Flame className="text-red-600 w-6 h-6 animate-pulse" />
       },
-      // 4. AOT THEME (Scout/GreenBrown)
+      // 4. AOT THEME (Serious/Earth)
       { 
           id: 'frame-aot', 
           name: 'Survey Corps', 
@@ -232,7 +217,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <Swords className="text-amber-100 w-6 h-6" />
       },
-      // 5. PINK COQUETTE
+      // 5. PINK COQUETTE (Cute)
       { 
           id: 'frame-pink', 
           name: 'Coquette Bow', 
@@ -243,7 +228,7 @@ const App = () => {
           photoRadius: 'rounded-[2rem]',
           sticker: <Heart className="text-pink-400 w-6 h-6 fill-pink-200" />
       },
-      // 6. RETRO YELLOW
+      // 6. RETRO YELLOW (Fun/Pop)
       { 
           id: 'frame-retro', 
           name: 'Retro 90s', 
@@ -254,18 +239,18 @@ const App = () => {
           photoRadius: 'rounded-lg',
           sticker: <Sun className="text-orange-500 w-8 h-8" />
       },
-      // 7. MINT FRESH
+      // 7. NOIR FILM (Serious/Vintage)
       { 
-          id: 'frame-mint', 
-          name: 'Minty Fresh', 
+          id: 'frame-noir', 
+          name: 'Noir Film', 
           type: 'css', 
-          bgColor: '#ecfdf5', 
-          textColor: '#047857', 
-          cssContainer: 'p-3 gap-3 bg-emerald-100 border border-emerald-300', 
-          photoRadius: 'rounded-xl',
-          sticker: <Sparkles className="text-emerald-500 w-5 h-5" />
+          bgColor: '#18181b', 
+          textColor: '#ffffff', 
+          cssContainer: 'p-3 gap-0 bg-zinc-950 border-x-4 border-black', 
+          photoRadius: 'rounded-none',
+          sticker: <Aperture className="text-zinc-600 w-5 h-5" />
       },
-      // 8. CYBERPUNK NEON
+      // 8. CYBERPUNK NEON (Edgy/Fun)
       { 
           id: 'frame-neon', 
           name: 'Neon City', 
@@ -276,7 +261,7 @@ const App = () => {
           photoRadius: 'rounded-sm',
           sticker: <Zap className="text-yellow-400 w-6 h-6 fill-yellow-400" />
       },
-      // 9. PURPLE DREAM
+      // 9. PURPLE DREAM (Soft/Cute)
       { 
           id: 'frame-purple', 
           name: 'Lavender Haze', 
@@ -287,7 +272,7 @@ const App = () => {
           photoRadius: 'rounded-2xl',
           sticker: <Moon className="text-purple-400 w-5 h-5" />
       },
-      // 10. CLOUDY BLUE
+      // 10. CLOUDY BLUE (Soft/Cute)
       { 
           id: 'frame-cloud', 
           name: 'Sky Blue', 
@@ -297,17 +282,6 @@ const App = () => {
           cssContainer: 'p-3 gap-3 bg-sky-100 border-4 border-white', 
           photoRadius: 'rounded-3xl',
           sticker: <Cloud className="text-white w-8 h-8 fill-white drop-shadow-md" />
-      },
-      // 11. HALLOWEEN GHOST
-       { 
-          id: 'frame-spooky', 
-          name: 'Spooky Cute', 
-          type: 'css', 
-          bgColor: '#27272a', 
-          textColor: '#a78bfa', 
-          cssContainer: 'p-3 gap-3 bg-zinc-800 border-dashed border-2 border-zinc-600', 
-          photoRadius: 'rounded-md',
-          sticker: <Ghost className="text-white w-6 h-6" />
       }
   ];
 
@@ -321,13 +295,13 @@ const App = () => {
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(stripTemplates[0]);
-
   const [currentFilter, setCurrentFilter] = useState(filters[0]);
   const [timerDuration, setTimerDuration] = useState(3);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(0);
   const [capturedPhotos, setCapturedPhotos] = useState([]); 
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
+  const [isEntering, setIsEntering] = useState(false); // New state for loading animation
   
   const MAX_PHOTOS = 8;
   const videoRef = useRef(null);
@@ -337,7 +311,6 @@ const App = () => {
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
 
-  // Helper: Get Overlay Image
   const getOverlayImage = (character, photoIndex) => {
     if (!character || !character.overlayImg) return null;
     if (Array.isArray(character.overlayImg)) {
@@ -356,7 +329,6 @@ const App = () => {
       return character.overlayImg;
   }
 
-  // --- CAMERA LOGIC ---
   const [stream, setStream] = useState(null);
   const [cameraError, setCameraError] = useState(false);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
@@ -409,7 +381,17 @@ const App = () => {
   }, [stream]);
 
   const triggerTransition = (callback) => { callback(); };
-  const handleStart = () => triggerTransition(() => setCurrentView('layout'));
+  
+  // MODIFIED HANDLE START WITH LOADING ANIMATION
+  const handleStart = () => {
+    if (isEntering) return;
+    setIsEntering(true);
+    setTimeout(() => {
+        triggerTransition(() => setCurrentView('layout'));
+        setIsEntering(false);
+    }, 2000); // 2 seconds loading delay
+  };
+
   const handleLayoutConfirm = () => selectedLayout && triggerTransition(() => setCurrentView('mode'));
   const handleModeConfirm = () => {
     setCapturedPhotos([]); 
@@ -533,10 +515,19 @@ const App = () => {
         .font-modern { font-family: 'Syncopate', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes line-loading {
+          0% { width: 0; left: 0; right: auto; }
+          50% { width: 100%; left: 0; right: auto; }
+          51% { width: 100%; left: auto; right: 0; }
+          100% { width: 0; left: auto; right: 0; }
+        }
+
+        .animate-line-loading {
+            animation: line-loading 1.5s infinite ease-in-out;
+        }
       `}</style>
 
-      {/* --- VIEW 1 to 7 are identical to previous, included here for completeness --- */}
-      
       {currentView === 'home' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full text-center p-4 bg-[#FDFDFD] text-black">
            <div className="relative mb-4 cursor-default select-none">
@@ -544,8 +535,25 @@ const App = () => {
                <h1 className="font-title text-[5rem] md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
            </div>
            <p className="font-serif text-lg md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
-           <button onClick={handleStart} className="group relative px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] border-b border-black/20 hover:border-black transition-all">
-             Enter Studio
+           
+           {/* MODIFIED BUTTON WITH SINGLE LOADING LINE */}
+           <button onClick={handleStart} disabled={isEntering} className="group relative px-8 py-3 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black hover:text-black/70 transition-colors overflow-hidden">
+             
+             {/* Text Normal */}
+             <span className={`relative z-10 transition-all duration-500 ${isEntering ? 'opacity-0 translate-y-2' : 'opacity-100'}`}>Enter Studio</span>
+             
+             {/* Text Loading */}
+             <span className={`absolute inset-0 flex items-center justify-center font-modern text-[10px] tracking-widest transition-all duration-500 ${isEntering ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                LOADING
+             </span>
+
+             {/* Static Background Line (Always visible track) */}
+             <span className="absolute bottom-0 left-0 w-full h-[1px] bg-black/20"></span>
+
+             {/* Active Line (Single line at bottom: Hover effect OR Loading effect) */}
+             <span className={`absolute bottom-0 left-0 h-[1px] bg-black transition-all duration-500 ease-out 
+                ${isEntering ? 'animate-line-loading' : 'w-0 group-hover:w-full'}`}>
+             </span>
            </button>
         </main>
       )}
@@ -662,7 +670,6 @@ const App = () => {
         </main>
       )}
 
-      {/* --- VIEW 6: CAMERA SESSION --- */}
       {currentView === 'camera-session' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden justify-between">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white pointer-events-none"></div>
@@ -736,7 +743,6 @@ const App = () => {
         </main>
       )}
 
-      {/* --- VIEW 7: RESULT SELECTION --- */}
       {currentView === 'result-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
@@ -752,16 +758,17 @@ const App = () => {
                       {/* CONTAINER STRIP: Tinggi otomatis (h-auto) & lebar tetap (w-[160px]) */}
                       <div className={`relative w-[160px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto`}>
                           
-                          {/* FRAME OVERLAY (IMAGE) */}
+                          {/* FRAME OVERLAY (IMAGE) - UPDATED: RELATIVE + H-AUTO */}
                           {selectedTemplate.type === 'image' && (
                               <div className="relative z-20 pointer-events-none">
-                                  <img src={selectedTemplate.url} className="w-full h-full object-fill" alt="Frame" />
+                                  <img src={selectedTemplate.url} className="w-full h-auto" alt="Frame" />
                               </div>
                           )}
 
-                          {/* PHOTO LAYER (STACKED BEHIND FRAME) */}
+                          {/* PHOTO LAYER (ABSOLUTE BEHIND FRAME) */}
                           <div className={`w-full z-10 ${selectedTemplate.cssContainer || (selectedTemplate.type === 'image' ? (selectedTemplate.cssPhotos || '') : 'p-1.5 gap-1.5 bg-white')}`}>
                              
+                             {/* DECORATION / STICKER */}
                              {selectedTemplate.sticker && (
                                  <div className="absolute top-1 right-1 z-30 pointer-events-none drop-shadow-md">
                                      {selectedTemplate.sticker}
@@ -792,7 +799,7 @@ const App = () => {
                           {/* WATERMARK FOOTER (CSS ONLY) */}
                           {selectedTemplate.type === 'css' && (
                              <div className={`text-center pt-2 pb-2 ${selectedTemplate.id === 'aestho-signature' ? 'flex items-center justify-center min-h-[40px]' : ''}`}>
-                                 <span className={`font-title ${selectedTemplate.id === 'aestho-signature' ? 'text-lg rotate-[-2deg]' : 'text-[10px]'} text-black`}>Aestho.</span>
+                                 <span className={`font-title ${selectedTemplate.id === 'aestho-signature' ? 'text-lg rotate-[-2deg]' : 'text-[10px]'}`} style={{ color: selectedTemplate.textColor }}>Aestho.</span>
                              </div>
                           )}
                       </div>
@@ -815,25 +822,20 @@ const App = () => {
           </main>
       )}
 
-      {/* --- VIEW 8: TEMPLATE SELECTION (CLOSE & CENTERED) --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-3xl">Choose Frame</h1>
-                  <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                      <Printer size={14}/> PRINT
-                  </button>
+                  <div className="w-8"></div> 
               </div>
-              
-              {/* CONTAINER: GAP LEBIH KECIL (gap-10), CENTERED */}
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-10 p-4 overflow-hidden">
-                  
-                  {/* KIRI: RESULT PREVIEW (LARGE & CENTERED) */}
-                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-8">YOUR RESULT</span>
+              <div className="flex-1 flex flex-row w-full h-full justify-center items-center gap-16 p-8 overflow-y-auto">
+                  <div className="flex flex-col items-center gap-3">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400">YOUR RESULTS</span>
                       
-                      <div className={`relative w-[180px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto scale-110 origin-center`}>
-                          {/* FRAME OVERLAY */}
+                      {/* CONTAINER STRIP: Tinggi otomatis (h-auto) */}
+                      <div className={`relative w-[160px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto`}>
+                          
+                          {/* FRAME OVERLAY - UPDATED */}
                           {selectedTemplate.type === 'image' && (
                               <div className="relative z-20 pointer-events-none">
                                   <img src={selectedTemplate.url} className="w-full h-auto" alt="Frame" />
@@ -843,6 +845,7 @@ const App = () => {
                           {/* PHOTO STACK */}
                           <div className={`w-full z-10 ${selectedTemplate.cssContainer || (selectedTemplate.type === 'image' ? (selectedTemplate.cssPhotos || '') : 'p-1.5 gap-1.5 bg-white')}`}>
                               
+                              {/* DECORATION / STICKER (Preview) */}
                               {selectedTemplate.sticker && (
                                  <div className="absolute top-1 right-1 z-30 pointer-events-none drop-shadow-sm">
                                      {selectedTemplate.sticker}
@@ -873,25 +876,23 @@ const App = () => {
                           )}
                       </div>
                   </div>
-
-                  {/* KANAN: HORIZONTAL SLIDER (ONE AT A TIME, PARTIALLY VISIBLE NEIGHBORS) */}
-                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative bg-gray-50/30 rounded-xl border border-gray-100/50">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 absolute top-10">SELECT FRAME</span>
-                      
-                      {/* INCREASED WIDTH (w-full max-w-lg) so neighbors are visible. NO MASKING. */}
-                      <div className="w-full max-w-lg h-[70vh] overflow-x-auto snap-x snap-mandatory flex items-center gap-10 hide-scrollbar px-20 py-20">
+                  <div className="flex flex-col items-center gap-3 h-[530px]"> 
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400">SELECT FRAME</span>
+                      <div className="flex flex-col gap-6 overflow-y-auto h-[500px] w-[200px] px-4 py-2 hide-scrollbar snap-y">
                           {stripTemplates.map((tpl) => (
-                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-4 p-4 rounded-xl transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'scale-110 opacity-100 z-10 drop-shadow-xl bg-white' : 'scale-90 opacity-60 hover:opacity-100'}`}>
-                                  <div className={`w-[120px] bg-white shadow-sm relative overflow-hidden rounded-sm border border-zinc-100 mx-auto flex flex-col pointer-events-none h-auto ring-1 ring-black/5`}>
+                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-shrink-0 flex flex-col items-center gap-2 p-2 rounded-lg border transition-all w-full snap-start ${selectedTemplate.id === tpl.id ? 'border-black bg-zinc-100 shadow-md scale-100' : 'border-zinc-200 hover:border-zinc-300 opacity-70 hover:opacity-100 scale-95'}`}>
+                                  <div className={`w-[100px] bg-white shadow-sm relative overflow-hidden rounded-sm border border-zinc-100 mx-auto flex flex-col pointer-events-none h-auto`}>
                                       {/* TAMPILKAN GAMBAR FRAME DI PREVIEW */}
                                       {tpl.type === 'image' && (
-                                          <div className="relative z-20">
-                                              <img src={tpl.url} className="w-full h-auto" alt="Frame Preview" />
+                                          <div className="absolute inset-0 z-20">
+                                              <img src={tpl.url} className="w-full h-full object-fill" alt="Frame Preview" />
                                           </div>
                                       )}
                                       
-                                      {/* PHOTO PLACEHOLDERS (AUTO FILL FOR IMAGE TYPE) */}
-                                      <div className={`flex flex-col w-full ${tpl.cssContainer || (tpl.type === 'image' ? 'absolute inset-0 z-10' : 'p-1 gap-1')}`}>
+                                      {/* PHOTO PLACEHOLDERS */}
+                                      <div className={`flex flex-col w-full ${tpl.cssContainer || (tpl.type === 'image' ? (tpl.cssPhotos || '') : 'p-1 gap-1')}`}>
+                                          
+                                          {/* SMALL STICKER PREVIEW */}
                                           {tpl.sticker && (
                                              <div className="absolute top-1 right-1 z-30 scale-50 origin-top-right">
                                                  {tpl.sticker}
@@ -899,10 +900,7 @@ const App = () => {
                                           )}
 
                                           {[...Array(4)].map((_,i) => (
-                                              <div key={i} className={`bg-gray-100 border border-transparent w-full ${tpl.photoStyle || 'aspect-[4/3]'} ${tpl.photoRadius || ''} flex items-center justify-center`}>
-                                                  {/* Jika image type & auto-fill, kotak ini transparan/hidden tertutup frame, tapi ada logic flex-1 */}
-                                                  {tpl.type === 'css' && <div className="w-full h-full bg-gray-200 opacity-50"></div>}
-                                              </div>
+                                              <div key={i} className={`bg-gray-100 border border-transparent w-full ${tpl.photoStyle || 'aspect-[4/3]'} ${tpl.photoRadius || ''} flex items-center justify-center`}><div className="w-full h-full bg-gray-200 opacity-50"></div></div>
                                           ))}
                                       </div>
 
@@ -912,7 +910,7 @@ const App = () => {
                                           </div>
                                       )}
                                   </div>
-                                  <span className="font-modern text-[8px] uppercase text-center mt-2 tracking-widest text-zinc-500">{tpl.name}</span>
+                                  <span className="font-modern text-[8px] uppercase text-center mt-2">{tpl.name}</span>
                               </div>
                           ))}
                       </div>
