@@ -577,9 +577,7 @@ const App = () => {
     else setTimerDuration(3);
   };
 
-  // --- UPDATED SELECTION LOGIC (PREVENT DUPLICATES) ---
   const handleSelectPhoto = (photo, originalIndex) => {
-      // Check if photo is already selected anywhere in the strip
       const isAlreadySelected = selectedStripPhotos.some(p => p && p.originalIndex === originalIndex);
       if (isAlreadySelected) return;
 
@@ -597,14 +595,31 @@ const App = () => {
       setSelectedStripPhotos(newStrip);
   };
 
-  // --- DRAG AND DROP HANDLERS ---
+  const handleMoveUp = (index) => {
+      if (index === 0) return;
+      const newStrip = [...selectedStripPhotos];
+      const temp = newStrip[index];
+      newStrip[index] = newStrip[index - 1];
+      newStrip[index - 1] = temp;
+      setSelectedStripPhotos(newStrip);
+  }
+
+  const handleMoveDown = (index) => {
+      if (index === 3) return;
+      const newStrip = [...selectedStripPhotos];
+      const temp = newStrip[index];
+      newStrip[index] = newStrip[index + 1];
+      newStrip[index + 1] = temp;
+      setSelectedStripPhotos(newStrip);
+  }
+
   const handleDragStart = (e, index) => {
       setDraggedItemIndex(index);
       e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e) => {
-      e.preventDefault(); // Necessary for onDrop to fire
+      e.preventDefault(); 
       e.dataTransfer.dropEffect = "move";
   };
 
@@ -616,7 +631,6 @@ const App = () => {
       const draggedItem = newStrip[draggedItemIndex];
       const targetItem = newStrip[targetIndex];
 
-      // Swap logic
       newStrip[targetIndex] = draggedItem;
       newStrip[draggedItemIndex] = targetItem;
 
@@ -624,9 +638,7 @@ const App = () => {
       setDraggedItemIndex(null);
   };
 
-  // --- RENDER COMPONENT: THE STRIP (FIXED SCALING & CENTERING) ---
   const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true }) => {
-    // 1. FOOTPRINT WRAPPER
     const wrapperStyle = {
         width: `${STD.W * scale}px`,
         height: `${STD.H * scale}px`,
@@ -634,7 +646,6 @@ const App = () => {
         flexShrink: 0
     };
 
-    // 2. INNER STRIP: Scale & Anchor Top Left
     const stripTransformStyle = {
         width: `${STD.W}px`,
         height: `${STD.H}px`,
@@ -645,7 +656,6 @@ const App = () => {
         left: 0
     };
 
-    // Style Content (Photos & Text)
     const stripContentStyle = {
         width: '100%',
         height: '100%',
@@ -658,7 +668,6 @@ const App = () => {
         boxSizing: 'border-box',
         overflow: 'hidden',
         backgroundColor: template.bgColor,
-        // Spread styles lain kecuali background image jika pakai overlay
         ...template.styleContainer
     };
 
@@ -674,16 +683,13 @@ const App = () => {
                 className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`}
                 style={stripTransformStyle}
             >
-                {/* LAYER 1: FOTO & KONTEN */}
                 <div style={stripContentStyle}>
-                    {/* Sticker (jika ada di template lama) */}
                     {template.sticker && (
                         <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">
                             {template.sticker}
                         </div>
                     )}
 
-                    {/* 4 Photo Slots */}
                     {photos.map((photoData, index) => (
                         <div key={index} 
                             className={`relative overflow-hidden bg-gray-100 border border-transparent flex items-center justify-center z-0 ${template.photoRadius || ''}`}
@@ -701,7 +707,6 @@ const App = () => {
                                         <img src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/>
                                     )}
                                     
-                                    {/* Overlay Character */}
                                     {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
                                         <img 
                                             src={getOverlayImage(characterData, photoData.originalIndex)} 
@@ -717,7 +722,6 @@ const App = () => {
                         </div>
                     ))}
 
-                    {/* Footer Area */}
                     <div className="flex-1 flex items-center justify-center relative overflow-hidden z-0">
                         {!template.hideFooter && (
                             <span 
@@ -734,8 +738,6 @@ const App = () => {
                     </div>
                 </div>
 
-                {/* LAYER 2: FRAME OVERLAY (PNG DENGAN TRANSPARANSI) */}
-                {/* Ini akan berada DI ATAS foto (z-20) sehingga elemen frame tidak tertutup foto */}
                 {template.overlayUrl && (
                     <div 
                         className="absolute inset-0 z-20 pointer-events-none"
@@ -761,6 +763,15 @@ const App = () => {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      {/* GLOBAL BRANDING / WATERMARK */}
+      <div className="fixed bottom-6 left-6 z-[60] opacity-40 hover:opacity-100 transition-all duration-300 group cursor-default">
+         <img 
+           src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" 
+           alt="Dzev Logo" 
+           className="w-16 h-auto drop-shadow-sm grayscale group-hover:grayscale-0 transition-all"
+         />
+      </div>
 
       {/* --- VIEW 1: HOME --- */}
       {currentView === 'home' && (
