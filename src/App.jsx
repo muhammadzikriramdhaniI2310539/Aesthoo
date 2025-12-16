@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -10,7 +10,7 @@ const App = () => {
   // Ukuran ini presisi untuk cetak 2x6 inchi atau 600x2000px
   const STD = {
       W: 600,
-      H: 2000,
+      H: 2000, 
       PHOTO_W: 510,
       PHOTO_H: 383,
       MARGIN_X: 45,
@@ -25,8 +25,8 @@ const App = () => {
       name: 'Classic White', 
       type: 'vertical', 
       desc: 'Clean white vertical strip.',
-      cssContainer: 'w-24 h-[320px] flex-col p-2 gap-2 bg-white shadow-xl',
-      cssPhoto: 'w-full h-16',
+      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex-col p-2 gap-2 bg-white shadow-xl',
+      cssPhoto: 'w-full h-12 md:h-16',
       bgColor: 'bg-white',
       textColor: 'text-black',
       disabled: false
@@ -36,7 +36,7 @@ const App = () => {
       name: 'Coming Soon', 
       type: 'placeholder', 
       desc: 'More styles coming soon.',
-      cssContainer: 'w-24 h-[320px] flex items-center justify-center bg-zinc-50 border border-dashed border-zinc-300 shadow-sm',
+      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex items-center justify-center bg-zinc-50 border border-dashed border-zinc-300 shadow-sm',
       cssPhoto: '',
       bgColor: 'bg-gray-100',
       textColor: 'text-gray-400',
@@ -50,14 +50,14 @@ const App = () => {
       id: 'original', 
       name: 'Aestho Original', 
       desc: 'Minimalist blank canvas.', 
-      icon: <Star className="w-8 h-8"/>, 
+      icon: <Star className="w-6 h-6 md:w-8 md:h-8"/>, 
       style: 'bg-white text-black border-gray-200' 
     },
     { 
       id: 'character', 
       name: 'Character Collab', 
       desc: 'Pose with idols & anime chars.', 
-      icon: <Users className="w-8 h-8"/>, 
+      icon: <Users className="w-6 h-6 md:w-8 md:h-8"/>, 
       style: 'bg-black text-white border-black hover:shadow-xl' 
     }
   ];
@@ -77,6 +77,7 @@ const App = () => {
       name: 'Genshin Impact', 
       logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png',
       color: 'hover:shadow-blue-400/50', 
+      hoverText: 'group-hover:text-blue-500', // Warna judul saat hover
       icon: <Star className="text-blue-500"/>,
       characters: [
         { 
@@ -124,6 +125,7 @@ const App = () => {
       name: 'Honkai: Star Rail',
       logoUrl: 'https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973',
       color: 'hover:shadow-indigo-500/50',
+      hoverText: 'group-hover:text-indigo-500',
       icon: <Sparkles className="text-indigo-500"/>,
       characters: [
           { 
@@ -151,6 +153,7 @@ const App = () => {
       name: 'Jujutsu Kaisen',
       logoUrl: 'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/a44778ea-3457-40e0-8979-b7e3685d23d0/dekiqwv-be5d6933-0cc6-40e1-9b67-60b3affb002b.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcL2E0NDc3OGVhLTM0NTctNDBlMC04OTc5LWI3ZTM2ODVkMjNkMFwvZGVraXF3di1iZTVkNjkzMy0wY2M2LTQwZTEtOWI2Ny02MGIzYWZmYjAwMmIucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.MTyBudLEGmNsCm4sYllShvFfo8MopGfgIQseKhejx00',
       color: 'hover:shadow-purple-900/50',
+      hoverText: 'group-hover:text-purple-800',
       icon: <Flame className="text-purple-800"/>,
       characters: [
           { id: 'gojo', name: 'Satoru Gojo', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Gojo', theme: 'bg-blue-50' },
@@ -164,6 +167,7 @@ const App = () => {
         name: 'Attack on Titan',
         logoUrl: 'https://logos-world.net/wp-content/uploads/2022/01/Attack-on-Titan-Logo.png',
         color: 'hover:shadow-amber-900/50',
+        hoverText: 'group-hover:text-amber-900',
         icon: <Swords className="text-amber-900"/>,
         characters: [
             { id: 'eren', name: 'Eren Yeager', overlayImg: 'https://placehold.co/600x800/transparent/451a03?text=Eren', theme: 'bg-amber-50' },
@@ -174,7 +178,7 @@ const App = () => {
     }
   ];
 
-  // E. Template Strip (UPDATED: Added overlayUrl for top layer frames)
+  // E. Template Strip
   const stripTemplates = [
       { 
           id: 'aestho-signature', 
@@ -350,11 +354,14 @@ const App = () => {
   const [countdownValue, setCountdownValue] = useState(0);
   const [capturedPhotos, setCapturedPhotos] = useState([]); 
   const [capturedClips, setCapturedClips] = useState([]);
+  
+  // REVERTED: Kembali ke 4 slot kosong untuk strip akhir
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
   
   const MAX_PHOTOS = 8;
   const videoRef = useRef(null);
   const characterListRef = useRef(null); 
+  const animeListRef = useRef(null); 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
@@ -439,6 +446,7 @@ const App = () => {
   const handleModeConfirm = () => {
     setCapturedPhotos([]); 
     setCapturedClips([]); 
+    // REVERTED: Reset ke 4 slot
     setSelectedStripPhotos([null, null, null, null]);
     setUseMockCamera(false);
     if (selectedMode === 'original') triggerTransition(() => setCurrentView('camera-session')); 
@@ -454,9 +462,27 @@ const App = () => {
   const handleBackToModeFromAnime = () => { setCurrentView('mode'); setSelectedAnime(null); };
   const handleBackToAnimeFromFrame = () => { setCurrentView('anime'); setSelectedFrame(null); };
 
+  const handleBackFromCamera = () => {
+      if (selectedMode === 'character') {
+          setCurrentView('frame');
+      } else {
+          setCurrentView('mode');
+      }
+  };
+
   const scrollCharacterList = (direction) => {
     if (characterListRef.current) {
         const { current } = characterListRef;
+        const scrollAmount = 200;
+        if (direction === 'left') current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        else current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // ADDED: Scroll logic for Anime Selection (View 4)
+  const scrollAnimeList = (direction) => {
+    if (animeListRef.current) {
+        const { current } = animeListRef;
         const scrollAmount = 200;
         if (direction === 'left') current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
         else current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
@@ -771,7 +797,7 @@ const App = () => {
          <img 
            src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" 
            alt="Dzev Logo" 
-           className="w-16 h-auto drop-shadow-sm grayscale group-hover:grayscale-0 transition-all"
+           className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all"
          />
       </div>
 
@@ -779,10 +805,11 @@ const App = () => {
       {currentView === 'home' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full text-center p-4 bg-[#FDFDFD] text-black">
            <div className="relative mb-4 cursor-default select-none">
-               <h1 className="font-title text-[5rem] md:text-[8rem] leading-none text-black z-10 relative">Aestho</h1>
-               <h1 className="font-title text-[5rem] md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
+               {/* RESPONSIVE FONT SIZE */}
+               <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black z-10 relative">Aestho</h1>
+               <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
            </div>
-           <p className="font-serif text-lg md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
+           <p className="font-serif text-sm md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
            
            <button onClick={handleStart} className="group flex flex-col items-center gap-1 px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black/60 hover:text-black transition-colors cursor-pointer">
              <span>Enter Studio</span>
@@ -820,7 +847,7 @@ const App = () => {
                                </>
                              ) : (
                                <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400">
-                                   <span className="font-serif text-6xl italic">?</span>
+                                   <span className="font-serif text-4xl md:text-6xl italic">?</span>
                                    <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed">Coming<br/>Soon</span>
                                </div>
                              )}
@@ -846,7 +873,7 @@ const App = () => {
             <div className="flex gap-6 mb-16 flex-wrap justify-center">
                 {modes.map((m) => (
                       <div key={m.id} onClick={() => setSelectedMode(m.id)} 
-                        className={`cursor-pointer border rounded-xl p-8 w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 scale-105' : 'opacity-70 hover:opacity-100'}`}>
+                        className={`cursor-pointer border rounded-xl p-6 md:p-8 w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 scale-105' : 'opacity-70 hover:opacity-100'}`}>
                         <div className="mb-4 flex justify-center">{m.icon}</div>
                         <h3 className="font-modern text-sm font-bold uppercase mb-2">{m.name}</h3>
                         <p className="font-serif text-sm italic opacity-80">{m.desc}</p>
@@ -860,20 +887,26 @@ const App = () => {
         </main>
       )}
 
-      {/* --- VIEW 4: ANIME SELECTION --- */}
+      {/* --- VIEW 4: ANIME SELECTION (UPDATED to Horizontal Scroll) --- */}
       {currentView === 'anime' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full w-full px-6 bg-[#FDFDFD] text-black">
             <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-12">Pick Partner</h2>
-            <div className="flex gap-6 mb-16 flex-wrap justify-center">
-                {animeOptions.map((a) => (
-                    <div key={a.id} onClick={() => handleAnimeSelect(a.id)} 
-                        className={`cursor-pointer border border-gray-200 rounded-xl p-6 w-40 h-48 md:w-48 md:h-56 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black hover:scale-105`}>
-                         <div className="opacity-50">{a.icon}</div>
-                         <img src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
-                         <span className="font-modern text-[10px] font-bold uppercase tracking-widest">{a.name}</span>
-                    </div>
-                ))}
+            
+            <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8 mb-16">
+                 {/* Scroll Container (NO ARROWS) */}
+                 <div ref={animeListRef} className="w-full overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory px-4 flex gap-6 items-center scroll-smooth justify-start md:justify-center">
+                    {animeOptions.map((a) => (
+                        <div key={a.id} onClick={() => handleAnimeSelect(a.id)} 
+                            className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 rounded-xl p-6 w-36 h-44 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black shadow-sm group`}>
+                             <div className="opacity-50">{a.icon}</div>
+                             <img src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
+                             {/* UPDATED: Color on hover logic */}
+                             <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${a.hoverText}`}>{a.name}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
+
             <button onClick={handleBackToModeFromAnime} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase">Back</button>
         </main>
       )}
@@ -889,11 +922,11 @@ const App = () => {
                 </p>
             </div>
             
-            <div className="w-full flex justify-center items-center relative max-w-4xl px-8">
+            <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8">
                  <button onClick={() => scrollCharacterList('left')} className="absolute left-2 md:left-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex">
                     <ChevronLeft size={16} />
                  </button>
-                 <div ref={characterListRef} className="w-full overflow-x-auto pb-12 hide-scrollbar snap-x snap-mandatory px-4 flex gap-8 items-center scroll-smooth">
+                 <div ref={characterListRef} className="w-full overflow-x-auto pb-12 hide-scrollbar snap-x snap-mandatory px-4 flex gap-4 md:gap-8 items-center scroll-smooth">
                       {currentAnimeData.characters.map((char) => (
                           <div key={char.id} onClick={() => setSelectedFrame(char.id)} className="group cursor-pointer flex flex-col items-center gap-6 flex-shrink-0 snap-center">
                               <div className={`relative transition-all duration-500 ease-out w-[100px] h-[340px] md:w-[120px] md:h-[400px] flex flex-col bg-white ${selectedFrame === char.id ? 'shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] scale-105 rotate-0 z-10 ring-1 ring-black/5' : 'shadow-lg hover:shadow-xl hover:-translate-y-2 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 rotate-1'}`}>
@@ -930,98 +963,147 @@ const App = () => {
         </main>
       )}
 
-      {/* --- VIEW 6: CAMERA SESSION --- */}
+      {/* --- VIEW 6: CAMERA SESSION (UPDATED RESPONSIVE) --- */}
       {currentView === 'camera-session' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden justify-between">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white pointer-events-none"></div>
-            <div className="w-full p-6 z-20 flex justify-between items-center text-zinc-400">
+            
+            {/* Header */}
+            <div className="w-full p-4 md:p-6 z-20 flex justify-between items-center text-zinc-400">
                 <div className="flex gap-4 items-center">
-                    <span className="font-title text-3xl text-zinc-900 tracking-tighter">Aestho.</span>
-                    <div className="h-4 w-px bg-zinc-300"></div>
-                    <span className="font-modern text-[10px] uppercase tracking-[0.3em]">{currentLayoutData?.name}</span>
+                    {/* BACK BUTTON */}
+                    <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 text-black transition-colors border border-transparent hover:border-zinc-200">
+                         <ArrowLeft size={20} />
+                    </button>
+                    <span className="font-title text-2xl md:text-3xl text-zinc-900 tracking-tighter">Aestho.</span>
+                    <div className="h-4 w-px bg-zinc-300 hidden md:block"></div>
+                    <span className="font-modern text-[10px] uppercase tracking-[0.3em] hidden md:block">{currentLayoutData?.name}</span>
                 </div>
                 <button onClick={() => window.location.reload()} className="hover:text-zinc-900 transition-colors opacity-50 hover:opacity-100">
                     <RefreshCw size={16}/>
                 </button>
             </div>
-            <div className="flex-1 w-full flex flex-col items-center justify-center p-4 relative z-10">
-                <div className="mb-6 text-center z-20">
-                     <span className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black border border-zinc-200 shadow-sm">
-                        SHOT {capturedPhotos.length} / {MAX_PHOTOS}
-                     </span>
-                </div>
-                <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 bg-white w-full max-w-xl aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100">
-                    {useMockCamera ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
-                            <span className="font-mono text-xs">Mock Camera Active</span>
-                        </div>
-                    ) : (
-                        <>
-                            {isCameraLoading && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-white z-20">
-                                    <Loader2 className="animate-spin text-zinc-300"/>
+
+            {/* Main Content: Camera + Strip Preview */}
+            {/* RESPONSIVE LAYOUT CHANGE: Flex-col on mobile to stack camera and roll */}
+            <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-center p-2 md:p-4 gap-4 relative z-10 h-full overflow-hidden">
+                
+                {/* Center Camera Area */}
+                <div className="flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full shrink-0">
+                     <div className="mb-2 md:mb-4 text-center z-20">
+                        <span className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black border border-zinc-200 shadow-sm">
+                            SHOT {capturedPhotos.length} / {MAX_PHOTOS}
+                        </span>
+                    </div>
+
+                    {/* RESPONSIVE CAMERA CONTAINER: 
+                        - Mobile: aspect-[3/4] (Portrait) agar pas dengan layar HP
+                        - Desktop: aspect-[4/3] (Landscape) agar pas dengan webcam laptop
+                        - max-h-[60vh] di mobile agar tidak menutupi kontrol bawah
+                    */}
+                    <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 bg-white w-full md:w-auto h-auto md:h-[65vh] max-h-[50vh] md:max-h-none aspect-[3/4] md:aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100 transition-all duration-500 ease-in-out">
+                        {useMockCamera ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
+                                <span className="font-mono text-xs">Mock Camera Active</span>
+                            </div>
+                        ) : (
+                            <>
+                                {isCameraLoading && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white z-20">
+                                        <Loader2 className="animate-spin text-zinc-300"/>
+                                    </div>
+                                )}
+                                {!cameraError ? (
+                                <video 
+                                    ref={videoRef} 
+                                    autoPlay 
+                                    playsInline 
+                                    muted 
+                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0"
+                                    style={{ filter: currentFilter.style }} 
+                                />
+                                ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 z-0">
+                                    <Camera size={32} />
+                                    <p className="font-modern text-[10px]">Camera Error</p>
+                                    <button onClick={() => setUseMockCamera(true)} className="mt-2 px-4 py-1 border border-zinc-300 text-[10px] hover:bg-zinc-100">Use Mock Camera</button>
                                 </div>
+                                )}
+                            </>
+                        )}
+                        {selectedMode === 'character' && (
+                        <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                            {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
+                                <img 
+                                    src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} 
+                                    alt="Frame Overlay" 
+                                    className="absolute bottom-0 left-0 w-[60%] h-auto object-contain object-bottom-left transition-all duration-500" 
+                                    style={{ 
+                                    mixBlendMode: 'normal',
+                                    filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` 
+                                    }}
+                                />
                             )}
-                            {!cameraError ? (
-                              <video 
-                                ref={videoRef} 
-                                autoPlay 
-                                playsInline 
-                                muted 
-                                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0"
-                                style={{ filter: currentFilter.style }} 
-                              />
-                            ) : (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 z-0">
-                                <Camera size={32} />
-                                <p className="font-modern text-[10px]">Camera Error</p>
-                                <button onClick={() => setUseMockCamera(true)} className="mt-2 px-4 py-1 border border-zinc-300 text-[10px] hover:bg-zinc-100">Use Mock Camera</button>
-                              </div>
-                            )}
-                        </>
-                    )}
-                    {selectedMode === 'character' && (
-                      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-                          {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
-                              <img 
-                                src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} 
-                                alt="Frame Overlay" 
-                                className="absolute bottom-0 left-0 w-[60%] h-auto object-contain object-bottom-left transition-all duration-500" 
-                                style={{ 
-                                  mixBlendMode: 'normal',
-                                  filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` 
-                                }}
-                              />
-                          )}
-                      </div>
-                    )}
-                    {isCountingDown && (
-                        <div className="absolute top-8 right-10 z-50 flex flex-col items-center justify-center pointer-events-none">
-                             <span className="font-title text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">
-                                {countdownValue}
-                             </span>
                         </div>
-                    )}
+                        )}
+                        {isCountingDown && (
+                            <div className="absolute top-8 right-10 z-50 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">
+                                    {countdownValue}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Side (Desktop) / Bottom (Mobile): Live Strip Sidebar */}
+                {/* RESPONSIVE ROLL:
+                    - Mobile: Horizontal row (flex-row), fixed height (h-20/24), horizontal scroll (overflow-x-auto)
+                    - Desktop: Vertical col (flex-col), fixed height (h-[450px]), vertical scroll (overflow-y-auto)
+                */}
+                <div className="flex md:flex-col flex-row w-full md:w-32 h-20 md:h-[450px] bg-white/40 backdrop-blur-md border border-zinc-200 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
+                    <span className="hidden md:block text-[8px] font-bold text-center text-zinc-400 mb-1 sticky top-0 bg-white/90 py-1 z-10 w-full rounded shadow-sm">ROLL (8)</span>
+                    {capturedPhotos.map((photo, i) => (
+                        <div key={i} className="w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 shadow-sm relative bg-white flex-shrink-0">
+                             {/* ADDED: Small indicator number */}
+                             <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
+                             <img src={photo} className="w-full h-full object-cover z-0 relative"/>
+                             
+                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
+                                <img 
+                                    src={getOverlayImage(selectedCharacterData, i)}
+                                    className="absolute bottom-0 left-0 w-[60%] h-auto object-contain pointer-events-none z-10"
+                                    style={{ mixBlendMode: 'normal' }} 
+                                />
+                             )}
+                        </div>
+                    ))}
+                    {/* Placeholder slots */}
+                    {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => (
+                        <div key={`empty-${i}`} className="w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 flex items-center justify-center text-zinc-300 bg-white/50 flex-shrink-0">
+                            <span className="text-[8px]">{capturedPhotos.length + i + 1}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
             
-            {/* Controls Bar */}
-            <div className="w-full pb-8 pt-4 flex justify-center items-center gap-8 md:gap-12 z-20">
+            {/* Controls Bar - Responsive Padding & Size */}
+            <div className="w-full pb-6 pt-2 md:pb-8 md:pt-4 flex justify-center items-center gap-6 md:gap-12 z-20">
                  {/* 1. TONE (FILTER) */}
-                 <div className="flex flex-col items-center gap-3">
-                     <div className="flex gap-3 bg-white/50 backdrop-blur-md px-4 py-2 rounded-full border border-zinc-200 shadow-sm">
+                 <div className="flex flex-col items-center gap-2 md:gap-3">
+                     <div className="flex gap-2 md:gap-3 bg-white/50 backdrop-blur-md px-3 py-2 md:px-4 md:py-2 rounded-full border border-zinc-200 shadow-sm">
                         {filters.map(f => (
                             <button key={f.id} onClick={() => setCurrentFilter(f)} 
-                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all text-[8px] font-mono border ${currentFilter.id === f.id ? 'bg-black text-white border-black' : 'text-zinc-400 border-transparent hover:text-black hover:border-zinc-300'}`}>
+                                className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white border-black scale-110 shadow-md' : 'text-zinc-400 border-transparent hover:text-black hover:border-zinc-300 hover:bg-white'}`}>
                                 {f.name[0]}
                             </button>
                         ))}
                      </div>
-                     <span className="font-modern text-[8px] tracking-[0.2em] text-zinc-400 uppercase">Tone</span>
+                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Tone</span>
                  </div>
 
                  {/* 2. UPLOAD BUTTON (NEW) */}
-                 <div className="flex flex-col items-center gap-3">
+                 <div className="flex flex-col items-center gap-2 md:gap-3">
                      <input 
                         type="file" 
                         ref={fileInputRef}
@@ -1030,61 +1112,66 @@ const App = () => {
                         multiple 
                         accept="image/*"
                      />
-                     <button onClick={handleUploadClick} className="h-10 w-10 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center justify-center hover:bg-white hover:border-zinc-400 transition-all text-zinc-600">
-                        <Upload size={16} />
+                     <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center justify-center hover:bg-white hover:border-zinc-400 transition-all text-zinc-600 shadow-sm">
+                        <Upload size={16} className="md:w-5 md:h-5"/>
                      </button>
-                     <span className="font-modern text-[8px] tracking-[0.2em] text-zinc-400 uppercase">Upload</span>
+                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Upload</span>
                  </div>
 
                  {/* 3. SHUTTER BUTTON */}
                  <div className="relative group">
                      <button onClick={handleShutterClick} 
                         className={`
-                            w-24 h-24 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-sm flex items-center justify-center 
+                            w-20 h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-sm flex items-center justify-center 
                             transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 shadow-lg
                             ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}
                         `}>
-                        <div className={`w-20 h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800'} flex items-center justify-center`}>
+                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800'} flex items-center justify-center`}>
                             {capturedPhotos.length >= MAX_PHOTOS ? 
-                                <Check className="text-green-500 opacity-80" size={32}/> : 
-                                <div className="w-16 h-16 rounded-full bg-zinc-900 transition-transform duration-300 group-hover:scale-90"></div>
+                                <Check className="text-green-500 opacity-80" size={24}/> : 
+                                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 transition-transform duration-300 group-hover:scale-90"></div>
                             }
                         </div>
                      </button>
                  </div>
 
                  {/* 4. DELAY (TIMER) */}
-                 <div className="flex flex-col items-center gap-3">
-                     <button onClick={toggleTimer} className="h-10 px-6 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center gap-3 hover:bg-white hover:border-zinc-400 transition-all font-mono text-xs text-zinc-600">
-                        <Clock size={14} className="opacity-70"/>
+                 <div className="flex flex-col items-center gap-2 md:gap-3">
+                     <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white hover:border-zinc-400 transition-all font-mono text-xs md:text-sm text-zinc-700 font-bold shadow-sm">
+                        <Clock size={14} className="opacity-70 md:w-4 md:h-4"/>
                         <span>{timerDuration}s</span>
                      </button>
-                     <span className="font-modern text-[8px] tracking-[0.2em] text-zinc-400 uppercase">Delay</span>
+                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Delay</span>
                  </div>
             </div>
         </main>
       )}
 
-      {/* --- VIEW 7: RESULT SELECTION --- */}
+      {/* --- VIEW 7: RESULT SELECTION (UPDATED) --- */}
       {currentView === 'result-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-              <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
-                  <h1 className="font-title text-3xl">Select & Arrange</h1>
-                  <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                      CHOOSE FRAME <ArrowRight size={14}/>
+              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
+                  <h1 className="font-title text-2xl md:text-3xl">Select & Arrange</h1>
+                  <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
+                      CHOOSE FRAME <ArrowRight size={12}/>
                   </button>
               </div>
 
-              <div className="flex-1 flex w-full h-full p-8 gap-12 justify-center items-center">
-                  <div className="flex flex-col gap-4">
-                      <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center">YOUR STRIP (DRAG TO REORDER)</div>
+              {/* Responsive Layout for Selection */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full p-4 md:p-8 gap-8 md:gap-12 justify-center items-center overflow-y-auto">
+                  
+                  {/* Strip Container */}
+                  <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
+                      <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center">YOUR STRIP</div>
+                      
+                      {/* Scale container slightly down on mobile to fit */}
                       <div className={`
-                          w-[140px] h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2
+                          w-[120px] md:w-[140px] h-[400px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto
                       `}>
                           {selectedStripPhotos.map((photoData, index) => (
                               <div 
                                   key={index} 
-                                  className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100"
+                                  className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0"
                                   draggable={!!photoData}
                                   onDragStart={(e) => handleDragStart(e, index)}
                                   onDragOver={handleDragOver}
@@ -1119,9 +1206,10 @@ const App = () => {
                       </div>
                   </div>
 
-                  <div className="flex flex-col gap-4 max-w-4xl h-full overflow-y-auto">
-                      <div className="font-modern text-[10px] tracking-widest text-zinc-400">CAPTURED SHOTS (CLICK TO ADD)</div>
-                      <div className="grid grid-cols-3 md:grid-cols-4 gap-4 pr-2">
+                  {/* Captured Shots Grid */}
+                  <div className="flex flex-col gap-4 w-full md:max-w-4xl h-auto md:h-full overflow-y-auto">
+                      <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center md:text-left">CAPTURED SHOTS</div>
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pr-0 md:pr-2 pb-20">
                           {capturedPhotos.map((photo, i) => {
                               const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
                               return (
@@ -1159,33 +1247,35 @@ const App = () => {
       {/* --- VIEW 8: TEMPLATE SELECTION --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-              <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
-                  <h1 className="font-title text-3xl">Choose Frame</h1>
-                  <button onClick={handleToFinalResult} className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                      NEXT <ArrowRight size={14}/>
+              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
+                  <h1 className="font-title text-2xl md:text-3xl">Choose Frame</h1>
+                  <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
+                      NEXT <ArrowRight size={12}/>
                   </button>
               </div>
               
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-10 p-4 overflow-hidden">
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-4 md:gap-10 p-4 overflow-hidden">
                   
                   {/* LEFT: LIVE PREVIEW (LARGE) */}
-                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-8">YOUR RESULT</span>
-                      {/* Scale down to fit comfortably */}
-                      <AesthoStrip 
-                        template={selectedTemplate} 
-                        photos={selectedStripPhotos} 
-                        mode={selectedMode} 
-                        characterData={selectedCharacterData} 
-                        scale={0.28}
-                      />
+                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative order-2 md:order-1">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 md:mb-8">YOUR RESULT</span>
+                      {/* Scale down to fit comfortably on mobile */}
+                      <div className="transform scale-90 md:scale-100 origin-center">
+                        <AesthoStrip 
+                            template={selectedTemplate} 
+                            photos={selectedStripPhotos} 
+                            mode={selectedMode} 
+                            characterData={selectedCharacterData} 
+                            scale={0.25} // Slightly smaller scale for general fit
+                        />
+                      </div>
                   </div>
 
                   {/* RIGHT: TEMPLATE CHOOSER */}
-                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative bg-gray-50/30 rounded-xl border border-gray-100/50">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 absolute top-10">SELECT FRAME</span>
+                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-1 md:order-2 py-4">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 md:absolute md:top-10">SELECT FRAME</span>
                       
-                      <div className="w-full max-w-lg h-[70vh] overflow-x-auto snap-x snap-mandatory flex items-center gap-10 hide-scrollbar px-20 py-20">
+                      <div className="w-full md:max-w-lg h-auto md:h-[70vh] overflow-x-auto snap-x snap-mandatory flex items-center gap-6 md:gap-10 hide-scrollbar px-8 md:px-20 py-4 md:py-20">
                           {stripTemplates.map((tpl) => (
                               <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
                                   <div className="pointer-events-none border border-zinc-200 shadow-sm bg-white overflow-hidden">
@@ -1194,7 +1284,7 @@ const App = () => {
                                             photos={selectedStripPhotos} 
                                             mode={selectedMode} 
                                             characterData={selectedCharacterData}
-                                            scale={0.2} // Fits nicely in thumbnail
+                                            scale={0.15} // Fits nicely in thumbnail
                                             shadow={false}
                                        />
                                   </div>
@@ -1211,21 +1301,21 @@ const App = () => {
       {currentView === 'final-result' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
              {/* Header */}
-             <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
+             <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
                   <div className="flex gap-4 items-center">
-                    <span className="font-title text-3xl">Aestho.</span>
-                    <span className="font-modern text-[10px] tracking-widest text-zinc-400">FINAL RESULT</span>
+                    <span className="font-title text-2xl md:text-3xl">Aestho.</span>
+                    <span className="font-modern text-[10px] tracking-widest text-zinc-400 hidden md:block">FINAL RESULT</span>
                   </div>
                   <div className="flex gap-4">
                       <button onClick={handleToTemplateSelection} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
-                      <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 bg-black text-white rounded-full text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                          <Download size={14}/> SAVE
+                      <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
+                          <Download size={12}/> SAVE
                       </button>
                   </div>
               </div>
 
-              {/* Main Content: Side-by-Side */}
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-16 p-8 overflow-y-auto bg-gray-50">
+              {/* Main Content: Side-by-Side (Stacked on Mobile) */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-12 md:gap-16 p-8 overflow-y-auto bg-gray-50">
                   
                   {/* LEFT: STATIC RESULT */}
                   <div className="flex flex-col items-center gap-4">
