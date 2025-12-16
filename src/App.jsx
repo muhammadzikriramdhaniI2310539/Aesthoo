@@ -743,7 +743,7 @@ const App = () => {
         </main>
       )}
 
-      {currentView === 'result-selection' && (
+     {currentView === 'result-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-3xl">Select & Arrange</h1>
@@ -758,17 +758,16 @@ const App = () => {
                       {/* CONTAINER STRIP: Tinggi otomatis (h-auto) & lebar tetap (w-[160px]) */}
                       <div className={`relative w-[160px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto`}>
                           
-                          {/* FRAME OVERLAY (IMAGE) - UPDATED: RELATIVE + H-AUTO */}
+                          {/* FRAME OVERLAY (IMAGE) */}
                           {selectedTemplate.type === 'image' && (
                               <div className="relative z-20 pointer-events-none">
-                                  <img src={selectedTemplate.url} className="w-full h-auto" alt="Frame" />
+                                  <img src={selectedTemplate.url} className="w-full h-full object-fill" alt="Frame" />
                               </div>
                           )}
 
-                          {/* PHOTO LAYER (ABSOLUTE BEHIND FRAME) */}
+                          {/* PHOTO LAYER (STACKED BEHIND FRAME) */}
                           <div className={`w-full z-10 ${selectedTemplate.cssContainer || (selectedTemplate.type === 'image' ? (selectedTemplate.cssPhotos || '') : 'p-1.5 gap-1.5 bg-white')}`}>
                              
-                             {/* DECORATION / STICKER */}
                              {selectedTemplate.sticker && (
                                  <div className="absolute top-1 right-1 z-30 pointer-events-none drop-shadow-md">
                                      {selectedTemplate.sticker}
@@ -799,7 +798,7 @@ const App = () => {
                           {/* WATERMARK FOOTER (CSS ONLY) */}
                           {selectedTemplate.type === 'css' && (
                              <div className={`text-center pt-2 pb-2 ${selectedTemplate.id === 'aestho-signature' ? 'flex items-center justify-center min-h-[40px]' : ''}`}>
-                                 <span className={`font-title ${selectedTemplate.id === 'aestho-signature' ? 'text-lg rotate-[-2deg]' : 'text-[10px]'}`} style={{ color: selectedTemplate.textColor }}>Aestho.</span>
+                                 <span className={`font-title ${selectedTemplate.id === 'aestho-signature' ? 'text-lg rotate-[-2deg]' : 'text-[10px]'} text-black`}>Aestho.</span>
                              </div>
                           )}
                       </div>
@@ -822,20 +821,25 @@ const App = () => {
           </main>
       )}
 
+      {/* --- VIEW 8: TEMPLATE SELECTION (CLOSE & CENTERED) --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-3xl">Choose Frame</h1>
-                  <div className="w-8"></div> 
+                  <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full text-xs font-mono hover:bg-zinc-800 tracking-wider">
+                      <Printer size={14}/> PRINT
+                  </button>
               </div>
-              <div className="flex-1 flex flex-row w-full h-full justify-center items-center gap-16 p-8 overflow-y-auto">
-                  <div className="flex flex-col items-center gap-3">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400">YOUR RESULTS</span>
+              
+              {/* CONTAINER: GAP LEBIH KECIL (gap-10), CENTERED */}
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-center items-center gap-10 p-4 overflow-hidden">
+                  
+                  {/* KIRI: RESULT PREVIEW (LARGE & CENTERED) */}
+                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-8">YOUR RESULT</span>
                       
-                      {/* CONTAINER STRIP: Tinggi otomatis (h-auto) */}
-                      <div className={`relative w-[160px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto`}>
-                          
-                          {/* FRAME OVERLAY - UPDATED */}
+                      <div className={`relative w-[180px] shadow-2xl overflow-hidden bg-white ring-1 ring-zinc-200 flex flex-col h-auto scale-110 origin-center`}>
+                          {/* FRAME OVERLAY */}
                           {selectedTemplate.type === 'image' && (
                               <div className="relative z-20 pointer-events-none">
                                   <img src={selectedTemplate.url} className="w-full h-auto" alt="Frame" />
@@ -845,7 +849,6 @@ const App = () => {
                           {/* PHOTO STACK */}
                           <div className={`w-full z-10 ${selectedTemplate.cssContainer || (selectedTemplate.type === 'image' ? (selectedTemplate.cssPhotos || '') : 'p-1.5 gap-1.5 bg-white')}`}>
                               
-                              {/* DECORATION / STICKER (Preview) */}
                               {selectedTemplate.sticker && (
                                  <div className="absolute top-1 right-1 z-30 pointer-events-none drop-shadow-sm">
                                      {selectedTemplate.sticker}
@@ -876,23 +879,25 @@ const App = () => {
                           )}
                       </div>
                   </div>
-                  <div className="flex flex-col items-center gap-3 h-[530px]"> 
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400">SELECT FRAME</span>
-                      <div className="flex flex-col gap-6 overflow-y-auto h-[500px] w-[200px] px-4 py-2 hide-scrollbar snap-y">
+
+                  {/* KANAN: HORIZONTAL SLIDER (ONE AT A TIME, PARTIALLY VISIBLE NEIGHBORS) */}
+                  <div className="flex-none flex flex-col items-center justify-center h-full w-full md:w-auto relative bg-gray-50/30 rounded-xl border border-gray-100/50">
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-4 absolute top-10">SELECT FRAME</span>
+                      
+                      {/* INCREASED WIDTH (w-full max-w-lg) so neighbors are visible. NO MASKING. */}
+                      <div className="w-full max-w-lg h-[70vh] overflow-x-auto snap-x snap-mandatory flex items-center gap-10 hide-scrollbar px-20 py-20">
                           {stripTemplates.map((tpl) => (
-                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-shrink-0 flex flex-col items-center gap-2 p-2 rounded-lg border transition-all w-full snap-start ${selectedTemplate.id === tpl.id ? 'border-black bg-zinc-100 shadow-md scale-100' : 'border-zinc-200 hover:border-zinc-300 opacity-70 hover:opacity-100 scale-95'}`}>
-                                  <div className={`w-[100px] bg-white shadow-sm relative overflow-hidden rounded-sm border border-zinc-100 mx-auto flex flex-col pointer-events-none h-auto`}>
+                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-4 p-4 rounded-xl transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'scale-110 opacity-100 z-10 drop-shadow-xl bg-white' : 'scale-90 opacity-60 hover:opacity-100'}`}>
+                                  <div className={`w-[120px] bg-white shadow-sm relative overflow-hidden rounded-sm border border-zinc-100 mx-auto flex flex-col pointer-events-none h-auto ring-1 ring-black/5`}>
                                       {/* TAMPILKAN GAMBAR FRAME DI PREVIEW */}
                                       {tpl.type === 'image' && (
-                                          <div className="absolute inset-0 z-20">
-                                              <img src={tpl.url} className="w-full h-full object-fill" alt="Frame Preview" />
+                                          <div className="relative z-20">
+                                              <img src={tpl.url} className="w-full h-auto" alt="Frame Preview" />
                                           </div>
                                       )}
                                       
-                                      {/* PHOTO PLACEHOLDERS */}
-                                      <div className={`flex flex-col w-full ${tpl.cssContainer || (tpl.type === 'image' ? (tpl.cssPhotos || '') : 'p-1 gap-1')}`}>
-                                          
-                                          {/* SMALL STICKER PREVIEW */}
+                                      {/* PHOTO PLACEHOLDERS (AUTO FILL FOR IMAGE TYPE) */}
+                                      <div className={`flex flex-col w-full ${tpl.cssContainer || (tpl.type === 'image' ? 'absolute inset-0 z-10' : 'p-1 gap-1')}`}>
                                           {tpl.sticker && (
                                              <div className="absolute top-1 right-1 z-30 scale-50 origin-top-right">
                                                  {tpl.sticker}
@@ -900,7 +905,10 @@ const App = () => {
                                           )}
 
                                           {[...Array(4)].map((_,i) => (
-                                              <div key={i} className={`bg-gray-100 border border-transparent w-full ${tpl.photoStyle || 'aspect-[4/3]'} ${tpl.photoRadius || ''} flex items-center justify-center`}><div className="w-full h-full bg-gray-200 opacity-50"></div></div>
+                                              <div key={i} className={`bg-gray-100 border border-transparent w-full ${tpl.photoStyle || 'aspect-[4/3]'} ${tpl.photoRadius || ''} flex items-center justify-center`}>
+                                                  {/* Jika image type & auto-fill, kotak ini transparan/hidden tertutup frame, tapi ada logic flex-1 */}
+                                                  {tpl.type === 'css' && <div className="w-full h-full bg-gray-200 opacity-50"></div>}
+                                              </div>
                                           ))}
                                       </div>
 
@@ -910,7 +918,7 @@ const App = () => {
                                           </div>
                                       )}
                                   </div>
-                                  <span className="font-modern text-[8px] uppercase text-center mt-2">{tpl.name}</span>
+                                  <span className="font-modern text-[8px] uppercase text-center mt-2 tracking-widest text-zinc-500">{tpl.name}</span>
                               </div>
                           ))}
                       </div>
@@ -922,4 +930,5 @@ const App = () => {
   );
 };
 
+export default App;
 export default App;
