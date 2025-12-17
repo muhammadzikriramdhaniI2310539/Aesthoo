@@ -144,7 +144,18 @@ const App = () => {
           { id: 'stelle', name: 'Stelle', overlayImg: 'https://placehold.co/600x800/transparent/cbd5e1?text=Stelle', theme: 'bg-gray-200' },
           { id: 'march', name: 'March 7th', overlayImg: 'https://placehold.co/600x800/transparent/f472b6?text=March+7th', theme: 'bg-pink-100' },
           { id: 'himeko', name: 'Himeko', overlayImg: 'https://placehold.co/600x800/transparent/dc2626?text=Himeko', theme: 'bg-red-100' },
-          { id: 'silverwolf', name: 'Silver Wolf', overlayImg: 'https://placehold.co/600x800/transparent/8b5cf6?text=Silver+Wolf', theme: 'bg-purple-100' },
+          { 
+              id: 'silverwolf', 
+              name: 'Silver Wolf', 
+              overlayImg: [
+                'https://lh3.googleusercontent.com/d/1T0uTImpAy1oXrSYUO4GeBWwpH1vPsvxG',
+                'https://lh3.googleusercontent.com/d/1OlRAMD2fe3s7bN7y4EfwpD_53CiTVpF1',
+                'https://lh3.googleusercontent.com/d/1SGvFyOL_G6JAm95UJF_tT504WEdsUmZa',
+                'https://lh3.googleusercontent.com/d/1EwtUpa1ZVQsJYYaIJ9oZ15c4C5AEuk3T'
+              ],
+              theme: 'bg-purple-100',
+              position: 'right' // ADDED: Position right
+          },
           { id: 'sparkle', name: 'Sparkle', overlayImg: 'https://placehold.co/600x800/transparent/be185d?text=Sparkle', theme: 'bg-pink-200' }
       ]
     },
@@ -738,7 +749,7 @@ const App = () => {
                                     {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
                                         <img 
                                             src={getOverlayImage(characterData, photoData.originalIndex)} 
-                                            className="absolute bottom-0 left-0 w-[60%] h-auto pointer-events-none z-10" 
+                                            className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto pointer-events-none z-10`} 
                                             style={{ mixBlendMode: 'normal' }} 
                                             alt="Overlay"
                                         />
@@ -936,7 +947,7 @@ const App = () => {
                                           <div key={i} className="flex-1 bg-zinc-50 relative overflow-hidden border border-zinc-100 shadow-inner">
                                               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
                                               {getOverlayImage(char, i * 2) && ( 
-                                                  <img src={getOverlayImage(char, i * 2)} alt={char.name} className="absolute bottom-0 left-0 w-[60%] h-auto object-contain z-10 mix-blend-darken" onError={(e) => { e.target.style.display = 'none'; }} style={{ pointerEvents: 'none' }} />
+                                                  <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain z-10 mix-blend-darken`} onError={(e) => { e.target.style.display = 'none'; }} style={{ pointerEvents: 'none' }} />
                                               )}
                                           </div>
                                       ))}
@@ -1037,7 +1048,7 @@ const App = () => {
                                 <img 
                                     src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} 
                                     alt="Frame Overlay" 
-                                    className="absolute bottom-0 left-0 w-[60%] h-auto object-contain object-bottom-left transition-all duration-500" 
+                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain object-bottom-left transition-all duration-500`}
                                     style={{ 
                                     mixBlendMode: 'normal',
                                     filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` 
@@ -1072,7 +1083,7 @@ const App = () => {
                              {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
                                 <img 
                                     src={getOverlayImage(selectedCharacterData, i)}
-                                    className="absolute bottom-0 left-0 w-[60%] h-auto object-contain pointer-events-none z-10"
+                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain pointer-events-none z-10`}
                                     style={{ mixBlendMode: 'normal' }} 
                                 />
                              )}
@@ -1184,7 +1195,7 @@ const App = () => {
                                         {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
                                             <img 
                                                 src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} 
-                                                className="absolute bottom-0 left-0 w-[60%] h-auto pointer-events-none z-10"
+                                                className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto pointer-events-none z-10`}
                                                 style={{ mixBlendMode: 'normal' }}
                                             />
                                         )}
@@ -1225,7 +1236,7 @@ const App = () => {
                                       {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
                                          <img 
                                             src={getOverlayImage(selectedCharacterData, i)}
-                                            className="absolute bottom-0 left-0 w-[60%] h-auto object-contain pointer-events-none"
+                                            className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain pointer-events-none`}
                                          />
                                       )}
                                       {isSelected && (
@@ -1323,7 +1334,7 @@ const App = () => {
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
                   
                   {/* LEFT: STATIC RESULT */}
-                  <div className="flex flex-col items-center gap-4 shrink-0">
+                  <div className="flex-col items-center gap-4 shrink-0 hidden md:flex">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
                       {/* Scale specifically for mobile visibility */}
                       <div className="transform scale-[0.85] md:scale-100 origin-top">
