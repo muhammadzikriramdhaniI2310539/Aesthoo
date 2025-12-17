@@ -150,11 +150,13 @@ const App = () => {
               overlayImg: [
                 'https://lh3.googleusercontent.com/d/1T0uTImpAy1oXrSYUO4GeBWwpH1vPsvxG',
                 'https://lh3.googleusercontent.com/d/1OlRAMD2fe3s7bN7y4EfwpD_53CiTVpF1',
-                'https://lh3.googleusercontent.com/d/1SGvFyOL_G6JAm95UJF_tT504WEdsUmZa',
+                'https://lh3.googleusercontent.com/d/1-Sc-sYQSJOfcLGArfz_OSciLVGsbJeC-',
                 'https://lh3.googleusercontent.com/d/1EwtUpa1ZVQsJYYaIJ9oZ15c4C5AEuk3T'
               ],
               theme: 'bg-purple-100',
-              position: 'right' // ADDED: Position right
+              position: 'right', // Posisi di kanan
+              styles: { 2: 'w-[85%]' }, // Ukuran besar untuk strip (tanpa translate)
+              cameraStyles: { 2: 'translate-x-12' } // Translate hanya saat di kamera
           },
           { id: 'sparkle', name: 'Sparkle', overlayImg: 'https://placehold.co/600x800/transparent/be185d?text=Sparkle', theme: 'bg-pink-200' }
       ]
@@ -391,6 +393,23 @@ const App = () => {
         return character.overlayImg[poseIndex % character.overlayImg.length];
     }
     return character.overlayImg;
+  };
+
+  // HELPER BARU: Mengatur lebar overlay per pose
+  const getOverlayWidth = (character, photoIndex) => {
+      if (!character) return 'w-[60%]';
+      
+      let width = 'w-[60%]'; // Default width
+      
+      // Hitung pose index (0, 1, 2, 3)
+      if (Array.isArray(character.overlayImg)) {
+          const poseIndex = Math.floor(photoIndex / 2) % character.overlayImg.length;
+          // Cek jika ada style khusus untuk index pose ini
+          if (character.styles && character.styles[poseIndex]) {
+              width = character.styles[poseIndex];
+          }
+      }
+      return width;
   };
 
   const getCameraOverlay = (character, shotCount) => {
@@ -749,7 +768,7 @@ const App = () => {
                                     {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
                                         <img 
                                             src={getOverlayImage(characterData, photoData.originalIndex)} 
-                                            className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto pointer-events-none z-10`} 
+                                            className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} 
                                             style={{ mixBlendMode: 'normal' }} 
                                             alt="Overlay"
                                         />
@@ -947,7 +966,7 @@ const App = () => {
                                           <div key={i} className="flex-1 bg-zinc-50 relative overflow-hidden border border-zinc-100 shadow-inner">
                                               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
                                               {getOverlayImage(char, i * 2) && ( 
-                                                  <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain z-10 mix-blend-darken`} onError={(e) => { e.target.style.display = 'none'; }} style={{ pointerEvents: 'none' }} />
+                                                  <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} onError={(e) => { e.target.style.display = 'none'; }} style={{ pointerEvents: 'none' }} />
                                               )}
                                           </div>
                                       ))}
@@ -1048,7 +1067,8 @@ const App = () => {
                                 <img 
                                     src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} 
                                     alt="Frame Overlay" 
-                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain object-bottom-left transition-all duration-500`}
+                                    // UPDATED: Added camera specific styles logic
+                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
                                     style={{ 
                                     mixBlendMode: 'normal',
                                     filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` 
@@ -1083,7 +1103,7 @@ const App = () => {
                              {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
                                 <img 
                                     src={getOverlayImage(selectedCharacterData, i)}
-                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain pointer-events-none z-10`}
+                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`}
                                     style={{ mixBlendMode: 'normal' }} 
                                 />
                              )}
@@ -1195,7 +1215,7 @@ const App = () => {
                                         {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
                                             <img 
                                                 src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} 
-                                                className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto pointer-events-none z-10`}
+                                                className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`}
                                                 style={{ mixBlendMode: 'normal' }}
                                             />
                                         )}
@@ -1236,7 +1256,7 @@ const App = () => {
                                       {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
                                          <img 
                                             src={getOverlayImage(selectedCharacterData, i)}
-                                            className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} w-[60%] h-auto object-contain pointer-events-none`}
+                                            className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`}
                                          />
                                       )}
                                       {isSelected && (
