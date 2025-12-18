@@ -7,7 +7,6 @@ const App = () => {
   // ==================================================================================
 
   // --- STANDARD DIMENSIONS ---
-  // Ukuran ini presisi untuk cetak 2x6 inchi atau 600x2000px
   const STD = {
       W: 600,
       H: 2000, 
@@ -77,7 +76,7 @@ const App = () => {
       name: 'Genshin Impact', 
       logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png',
       color: 'hover:shadow-blue-400/50', 
-      hoverText: 'group-hover:text-blue-500', // Warna judul saat hover
+      hoverText: 'group-hover:text-blue-500',
       icon: <Star className="text-blue-500"/>,
       characters: [
         { 
@@ -154,9 +153,9 @@ const App = () => {
                 'https://lh3.googleusercontent.com/d/1EwtUpa1ZVQsJYYaIJ9oZ15c4C5AEuk3T'
               ],
               theme: 'bg-purple-100',
-              position: 'right', // Posisi di kanan
-              styles: { 2: 'w-[85%]' }, // Ukuran besar untuk strip (tanpa translate)
-              cameraStyles: { 2: 'translate-x-12' } // Translate hanya saat di kamera
+              position: 'right',
+              styles: { 2: 'w-[85%]' },
+              cameraStyles: { 2: 'translate-x-[15%]' } // UPDATED: Pose ke-3 geser lebih ke kanan agar berdempet dengan ujung kamera
           },
           { id: 'sparkle', name: 'Sparkle', overlayImg: 'https://placehold.co/600x800/transparent/be185d?text=Sparkle', theme: 'bg-pink-200' }
       ]
@@ -170,7 +169,18 @@ const App = () => {
       icon: <Flame className="text-purple-800"/>,
       characters: [
           { id: 'gojo', name: 'Satoru Gojo', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Gojo', theme: 'bg-blue-50' },
-          { id: 'nobara', name: 'Nobara Kugisaki', overlayImg: 'https://placehold.co/600x800/transparent/f97316?text=Nobara', theme: 'bg-orange-50' },
+          { 
+              id: 'nobara', 
+              name: 'Nobara Kugisaki', 
+              overlayImg: [
+                  'https://lh3.googleusercontent.com/d/1PxL5ajHWYhdrjqLFW9_-olau5PqnKCuX',
+                  'https://lh3.googleusercontent.com/d/1ISfVxep7RWK2Sq1oSnwktjq80O1t99z8',
+                  'https://lh3.googleusercontent.com/d/1fZTm5aDwVrdqaZBtN3WvQkwq_O-Zg6Et',
+                  'https://lh3.googleusercontent.com/d/1l9iruV19bncgBUX4tSivk07fnoENyKpO'
+              ],
+              theme: 'bg-orange-50',
+              styles: { 0: 'w-[50%]' } // UPDATED: Pose 1 (index 0) diubah menjadi w-50%
+          },
           { id: 'yuji', name: 'Yuji Itadori', overlayImg: 'https://placehold.co/600x800/transparent/ef4444?text=Yuji', theme: 'bg-red-50' },
           { id: 'megumi', name: 'Megumi Fushiguro', overlayImg: 'https://placehold.co/600x800/transparent/1e293b?text=Megumi', theme: 'bg-slate-200' }
       ]
@@ -368,7 +378,6 @@ const App = () => {
   const [capturedPhotos, setCapturedPhotos] = useState([]); 
   const [capturedClips, setCapturedClips] = useState([]);
   
-  // REVERTED: Kembali ke 4 slot kosong untuk strip akhir
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
   
   const MAX_PHOTOS = 8;
@@ -379,7 +388,6 @@ const App = () => {
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
 
-  // NEW STATE: DRAG AND DROP
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
 
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
@@ -395,16 +403,11 @@ const App = () => {
     return character.overlayImg;
   };
 
-  // HELPER BARU: Mengatur lebar overlay per pose
   const getOverlayWidth = (character, photoIndex) => {
       if (!character) return 'w-[60%]';
-      
-      let width = 'w-[60%]'; // Default width
-      
-      // Hitung pose index (0, 1, 2, 3)
+      let width = 'w-[60%]';
       if (Array.isArray(character.overlayImg)) {
           const poseIndex = Math.floor(photoIndex / 2) % character.overlayImg.length;
-          // Cek jika ada style khusus untuk index pose ini
           if (character.styles && character.styles[poseIndex]) {
               width = character.styles[poseIndex];
           }
@@ -445,7 +448,6 @@ const App = () => {
   };
 
   useEffect(() => {
-    let currentStream = null;
     if (currentView === 'camera-session') {
       if (!useMockCamera) startCamera();
     } else {
@@ -455,9 +457,7 @@ const App = () => {
       }
     }
     return () => {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
+      if (stream) stream.getTracks().forEach(track => track.stop());
     };
   }, [currentView, useMockCamera]);
 
@@ -476,7 +476,6 @@ const App = () => {
   const handleModeConfirm = () => {
     setCapturedPhotos([]); 
     setCapturedClips([]); 
-    // REVERTED: Reset ke 4 slot
     setSelectedStripPhotos([null, null, null, null]);
     setUseMockCamera(false);
     if (selectedMode === 'original') triggerTransition(() => setCurrentView('camera-session')); 
@@ -493,29 +492,23 @@ const App = () => {
   const handleBackToAnimeFromFrame = () => { setCurrentView('anime'); setSelectedFrame(null); };
 
   const handleBackFromCamera = () => {
-      if (selectedMode === 'character') {
-          setCurrentView('frame');
-      } else {
-          setCurrentView('mode');
-      }
+      if (selectedMode === 'character') setCurrentView('frame');
+      else setCurrentView('mode');
   };
 
   const scrollCharacterList = (direction) => {
     if (characterListRef.current) {
-        const { current } = characterListRef;
         const scrollAmount = 200;
-        if (direction === 'left') current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        else current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        if (direction === 'left') characterListRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        else characterListRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
-  // ADDED: Scroll logic for Anime Selection (View 4)
   const scrollAnimeList = (direction) => {
     if (animeListRef.current) {
-        const { current } = animeListRef;
         const scrollAmount = 200;
-        if (direction === 'left') current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        else current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        if (direction === 'left') animeListRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        else animeListRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
@@ -597,19 +590,14 @@ const App = () => {
       }
   }
 
-  const handleUploadClick = () => {
-      fileInputRef.current.click();
-  };
+  const handleUploadClick = () => { fileInputRef.current.click(); };
 
   const handleFileChange = (e) => {
       const files = Array.from(e.target.files);
       if (files.length === 0) return;
-
       const remaining = MAX_PHOTOS - capturedPhotos.length;
       if (remaining <= 0) return;
-
       const filesToProcess = files.slice(0, remaining);
-      
       Promise.all(filesToProcess.map(file => {
           return new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -621,7 +609,6 @@ const App = () => {
           const updatedPhotos = [...capturedPhotos, ...images];
           setCapturedPhotos(updatedPhotos);
           setCapturedClips(prev => [...prev, ...new Array(images.length).fill(null)]);
-
           if (updatedPhotos.length >= MAX_PHOTOS) {
                setTimeout(() => triggerTransition(() => setCurrentView('result-selection')), 500);
           }
@@ -636,9 +623,7 @@ const App = () => {
   };
 
   const handleSelectPhoto = (photo, originalIndex) => {
-      const isAlreadySelected = selectedStripPhotos.some(p => p && p.originalIndex === originalIndex);
-      if (isAlreadySelected) return;
-
+      if (selectedStripPhotos.some(p => p && p.originalIndex === originalIndex)) return;
       const emptyIndex = selectedStripPhotos.findIndex(p => p === null);
       if (emptyIndex !== -1) {
           const newStrip = [...selectedStripPhotos];
@@ -653,159 +638,55 @@ const App = () => {
       setSelectedStripPhotos(newStrip);
   };
 
-  const handleMoveUp = (index) => {
-      if (index === 0) return;
-      const newStrip = [...selectedStripPhotos];
-      const temp = newStrip[index];
-      newStrip[index] = newStrip[index - 1];
-      newStrip[index - 1] = temp;
-      setSelectedStripPhotos(newStrip);
-  }
-
-  const handleMoveDown = (index) => {
-      if (index === 3) return;
-      const newStrip = [...selectedStripPhotos];
-      const temp = newStrip[index];
-      newStrip[index] = newStrip[index + 1];
-      newStrip[index + 1] = temp;
-      setSelectedStripPhotos(newStrip);
-  }
-
   const handleDragStart = (e, index) => {
       setDraggedItemIndex(index);
       e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e) => {
-      e.preventDefault(); 
-      e.dataTransfer.dropEffect = "move";
-  };
+  const handleDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
 
   const handleDrop = (e, targetIndex) => {
       e.preventDefault();
       if (draggedItemIndex === null || draggedItemIndex === targetIndex) return;
-
       const newStrip = [...selectedStripPhotos];
       const draggedItem = newStrip[draggedItemIndex];
       const targetItem = newStrip[targetIndex];
-
       newStrip[targetIndex] = draggedItem;
       newStrip[draggedItemIndex] = targetItem;
-
       setSelectedStripPhotos(newStrip);
       setDraggedItemIndex(null);
   };
 
   const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true }) => {
-    const wrapperStyle = {
-        width: `${STD.W * scale}px`,
-        height: `${STD.H * scale}px`,
-        position: 'relative',
-        flexShrink: 0
-    };
-
-    const stripTransformStyle = {
-        width: `${STD.W}px`,
-        height: `${STD.H}px`,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left', 
-        position: 'absolute',
-        top: 0,
-        left: 0
-    };
-
-    const stripContentStyle = {
-        width: '100%',
-        height: '100%',
-        paddingTop: `${STD.MARGIN_TOP}px`,
-        paddingLeft: `${STD.MARGIN_X}px`,
-        paddingRight: `${STD.MARGIN_X}px`,
-        gap: `${STD.GAP}px`,
-        display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
-        backgroundColor: template.bgColor,
-        ...template.styleContainer
-    };
-
-    const photoStyle = {
-        width: `${STD.PHOTO_W}px`,
-        height: `${STD.PHOTO_H}px`,
-        flexShrink: 0 
-    };
+    const wrapperStyle = { width: `${STD.W * scale}px`, height: `${STD.H * scale}px`, position: 'relative', flexShrink: 0 };
+    const stripTransformStyle = { width: `${STD.W}px`, height: `${STD.H}px`, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 };
+    const stripContentStyle = { width: '100%', height: '100%', paddingTop: `${STD.MARGIN_TOP}px`, paddingLeft: `${STD.MARGIN_X}px`, paddingRight: `${STD.MARGIN_X}px`, gap: `${STD.GAP}px`, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', backgroundColor: template.bgColor, ...template.styleContainer };
+    const photoStyle = { width: `${STD.PHOTO_W}px`, height: `${STD.PHOTO_H}px`, flexShrink: 0 };
 
     return (
         <div style={wrapperStyle}>
-            <div 
-                className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`}
-                style={stripTransformStyle}
-            >
+            <div className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`} style={stripTransformStyle}>
                 <div style={stripContentStyle}>
-                    {template.sticker && (
-                        <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">
-                            {template.sticker}
-                        </div>
-                    )}
-
+                    {template.sticker && <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">{template.sticker}</div>}
                     {photos.map((photoData, index) => (
-                        <div key={index} 
-                            className={`relative overflow-hidden bg-gray-100 border border-transparent flex items-center justify-center z-0 ${template.photoRadius || ''}`}
-                            style={photoStyle}
-                        >
+                        <div key={index} className={`relative overflow-hidden bg-gray-100 border border-transparent flex items-center justify-center z-0 ${template.photoRadius || ''}`} style={photoStyle}>
                             {photoData ? (
                                 <>
                                     {clips && clips[photoData.originalIndex] ? (
-                                        <video 
-                                            src={clips[photoData.originalIndex]} 
-                                            autoPlay loop muted playsInline 
-                                            className="w-full h-full object-cover transform scale-x-[-1]" 
-                                        />
-                                    ) : (
-                                        <img src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/>
-                                    )}
-                                    
+                                        <video src={clips[photoData.originalIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                    ) : ( <img src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/> )}
                                     {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
-                                        <img 
-                                            src={getOverlayImage(characterData, photoData.originalIndex)} 
-                                            className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} 
-                                            style={{ mixBlendMode: 'normal' }} 
-                                            alt="Overlay"
-                                        />
+                                        <img src={getOverlayImage(characterData, photoData.originalIndex)} className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay" />
                                     )}
                                 </>
-                            ) : (
-                                <div className="w-full h-full bg-white opacity-20"></div>
-                            )}
+                            ) : ( <div className="w-full h-full bg-white opacity-20"></div> )}
                         </div>
                     ))}
-
                     <div className="flex-1 flex items-center justify-center relative overflow-hidden z-0">
-                        {!template.hideFooter && (
-                            <span 
-                                className={`font-title ${template.id === 'aestho-signature' ? 'rotate-[-2deg]' : ''}`} 
-                                style={{ 
-                                    color: template.textColor, 
-                                    fontSize: '64px' 
-                                }}
-                            >
-                                Aestho.
-                            </span>
-                        )}
-                        {template.id === 'frame-retro' && <div className="absolute bottom-4 w-full h-4 bg-orange-400 opacity-50"></div>}
+                        {!template.hideFooter && ( <span className={`font-title ${template.id === 'aestho-signature' ? 'rotate-[-2deg]' : ''}`} style={{ color: template.textColor, fontSize: '64px' }}> Aestho. </span> )}
                     </div>
                 </div>
-
-                {template.overlayUrl && (
-                    <div 
-                        className="absolute inset-0 z-20 pointer-events-none"
-                        style={{ 
-                            backgroundImage: `url(${template.overlayUrl})`,
-                            backgroundSize: '100% 100%',
-                            backgroundRepeat: 'no-repeat'
-                        }}
-                    />
-                )}
+                {template.overlayUrl && <div className="absolute inset-0 z-20 pointer-events-none" style={{ backgroundImage: `url(${template.overlayUrl})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' }} />}
             </div>
         </div>
     );
@@ -824,23 +705,17 @@ const App = () => {
 
       {/* GLOBAL BRANDING / WATERMARK */}
       <div className="fixed bottom-6 left-6 z-[60] opacity-40 hover:opacity-100 transition-all duration-300 group cursor-default">
-         <img 
-           src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" 
-           alt="Dzev Logo" 
-           className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all"
-         />
+         <img src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Dzev Logo" className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all" />
       </div>
 
       {/* --- VIEW 1: HOME --- */}
       {currentView === 'home' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full text-center p-4 bg-[#FDFDFD] text-black">
            <div className="relative mb-4 cursor-default select-none">
-               {/* RESPONSIVE FONT SIZE */}
                <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black z-10 relative">Aestho</h1>
                <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
            </div>
            <p className="font-serif text-sm md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
-           
            <button onClick={handleStart} className="group flex flex-col items-center gap-1 px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black/60 hover:text-black transition-colors cursor-pointer">
              <span>Enter Studio</span>
              <div className="relative w-full h-[1px] mt-1">
@@ -857,23 +732,14 @@ const App = () => {
             <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-12">Choose Canvas</h2>
             <div className="flex gap-12 items-center justify-center mb-16 flex-wrap">
                 {layouts.map((l) => (
-                    <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} 
-                      className={`
-                        flex flex-col items-center justify-center gap-6 transition-all duration-300 
-                        ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'}
-                        ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}
-                      `}>
-                        <div className={`${l.cssContainer} transition-transform ${!l.disabled ? 'group-hover:-translate-y-2' : ''} border ${l.id === 'classic-white' ? 'border-gray-200' : 'border-gray-200'}`}>
+                    <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} className={`flex flex-col items-center justify-center gap-6 transition-all duration-300 ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'} ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}`}>
+                        <div className={`${l.cssContainer} transition-transform ${!l.disabled ? 'group-hover:-translate-y-2' : ''} border border-gray-200`}>
                              {!l.disabled ? (
                                <>
                                  {[...Array(4)].map((_,i) => (
-                                   <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}>
-                                      <div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div>
-                                   </div>
+                                   <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}><div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div></div>
                                  ))}
-                                 <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}>
-                                    <span className="font-title text-[10px]">Aestho.</span>
-                                 </div>
+                                 <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}><span className="font-title text-[10px]">Aestho.</span></div>
                                </>
                              ) : (
                                <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400">
@@ -902,8 +768,7 @@ const App = () => {
             <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-12">Select Style</h2>
             <div className="flex gap-6 mb-16 flex-wrap justify-center">
                 {modes.map((m) => (
-                      <div key={m.id} onClick={() => setSelectedMode(m.id)} 
-                        className={`cursor-pointer border rounded-xl p-6 md:p-8 w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 scale-105' : 'opacity-70 hover:opacity-100'}`}>
+                      <div key={m.id} onClick={() => setSelectedMode(m.id)} className={`cursor-pointer border rounded-xl p-6 md:p-8 w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 scale-105' : 'opacity-70 hover:opacity-100'}`}>
                         <div className="mb-4 flex justify-center">{m.icon}</div>
                         <h3 className="font-modern text-sm font-bold uppercase mb-2">{m.name}</h3>
                         <p className="font-serif text-sm italic opacity-80">{m.desc}</p>
@@ -917,45 +782,35 @@ const App = () => {
         </main>
       )}
 
-      {/* --- VIEW 4: ANIME SELECTION (UPDATED to Horizontal Scroll) --- */}
+      {/* --- VIEW 4: ANIME SELECTION --- */}
       {currentView === 'anime' && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full w-full px-6 bg-[#FDFDFD] text-black">
             <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-12">Pick Partner</h2>
-            
             <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8 mb-16">
-                 {/* Scroll Container (NO ARROWS) */}
                  <div ref={animeListRef} className="w-full overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory px-4 flex gap-6 items-center scroll-smooth justify-start md:justify-center">
                     {animeOptions.map((a) => (
-                        <div key={a.id} onClick={() => handleAnimeSelect(a.id)} 
-                            className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 rounded-xl p-6 w-36 h-44 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black shadow-sm group`}>
+                        <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 rounded-xl p-6 w-36 h-44 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black shadow-sm group`}>
                              <div className="opacity-50">{a.icon}</div>
                              <img src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
-                             {/* UPDATED: Color on hover logic */}
-                             <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${a.hoverText}`}>{a.name}</span>
+                             <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black`}>{a.name}</span>
                         </div>
                     ))}
                 </div>
             </div>
-
             <button onClick={handleBackToModeFromAnime} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase">Back</button>
         </main>
       )}
 
-      {/* --- VIEW 5: FRAME SELECTION (STRIP PREVIEW) --- */}
+      {/* --- VIEW 5: FRAME SELECTION --- */}
       {currentView === 'frame' && currentAnimeData && (
         <main className="relative z-30 flex flex-col items-center justify-center h-full w-full bg-[#FDFDFD] text-black">
             <div className="text-center mb-8 px-4">
                 <p className="font-modern text-[10px] tracking-[0.3em] text-gray-400 uppercase mb-2">Selected Layout: {currentLayoutData?.name}</p>
                 <h2 className="font-serif text-3xl md:text-4xl italic text-black">Choose Character</h2>
-                <p className="font-sans text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1 animate-pulse">
-                    <ArrowRight size={10}/> Swipe to browse <ArrowLeft size={10}/>
-                </p>
+                <p className="font-sans text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1 animate-pulse"><ArrowRight size={10}/> Swipe to browse <ArrowLeft size={10}/></p>
             </div>
-            
             <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8">
-                 <button onClick={() => scrollCharacterList('left')} className="absolute left-2 md:left-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex">
-                    <ChevronLeft size={16} />
-                 </button>
+                 <button onClick={() => scrollCharacterList('left')} className="absolute left-2 md:left-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex"><ChevronLeft size={16} /></button>
                  <div ref={characterListRef} className="w-full overflow-x-auto pb-12 hide-scrollbar snap-x snap-mandatory px-4 flex gap-4 md:gap-8 items-center scroll-smooth">
                       {currentAnimeData.characters.map((char) => (
                           <div key={char.id} onClick={() => setSelectedFrame(char.id)} className="group cursor-pointer flex flex-col items-center gap-6 flex-shrink-0 snap-center">
@@ -965,308 +820,143 @@ const App = () => {
                                       {[...Array(4)].map((_, i) => (
                                           <div key={i} className="flex-1 bg-zinc-50 relative overflow-hidden border border-zinc-100 shadow-inner">
                                               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
-                                              {getOverlayImage(char, i * 2) && ( 
-                                                  <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} onError={(e) => { e.target.style.display = 'none'; }} style={{ pointerEvents: 'none' }} />
-                                              )}
+                                              {getOverlayImage(char, i * 2) && ( <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
                                           </div>
                                       ))}
                                   </div>
-                                  <div className="h-8 flex items-center justify-center pb-2">
-                                      <span className="font-title text-[10px] text-zinc-400">Aestho.</span>
-                                  </div>
+                                  <div className="h-8 flex items-center justify-center pb-2"><span className="font-title text-[10px] text-zinc-400">Aestho.</span></div>
                               </div>
                               <span className={`font-modern text-[10px] tracking-[0.2em] uppercase transition-all duration-300 ${selectedFrame === char.id ? 'text-black font-semibold' : 'text-gray-300 group-hover:text-gray-500'}`}>{char.name}</span>
                           </div>
                       ))}
                  </div>
-                 <button onClick={() => scrollCharacterList('right')} className="absolute right-2 md:right-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex">
-                    <ChevronRight size={16} />
-                 </button>
+                 <button onClick={() => scrollCharacterList('right')} className="absolute right-2 md:right-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex"><ChevronRight size={16} /></button>
             </div>
-
             <div className="fixed bottom-0 left-0 w-full flex flex-col md:flex-row justify-center gap-4 md:gap-8 items-center bg-gradient-to-t from-white via-white to-transparent pt-8 pb-8 px-4">
                  <button onClick={handleBackToAnimeFromFrame} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase flex items-center gap-2 order-2 md:order-1"><ArrowLeft size={12}/> Select Series</button>
-                {selectedFrame && (
-                    <button onClick={handleFrameConfirm} className="bg-black text-white px-10 py-3 font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 transition-all flex items-center gap-3 order-1 md:order-2 w-full md:w-auto justify-center shadow-none border border-black hover:invert">Start Session</button>
-                )}
+                {selectedFrame && ( <button onClick={handleFrameConfirm} className="bg-black text-white px-10 py-3 font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 transition-all flex items-center gap-3 order-1 md:order-2 w-full md:w-auto justify-center border border-black hover:invert">Start Session</button> )}
             </div>
         </main>
       )}
 
-      {/* --- VIEW 6: CAMERA SESSION (UPDATED RESPONSIVE) --- */}
+      {/* --- VIEW 6: CAMERA SESSION --- */}
       {currentView === 'camera-session' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden justify-between">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white pointer-events-none"></div>
-            
-            {/* Header */}
             <div className="w-full p-4 md:p-6 z-20 flex justify-between items-center text-zinc-400">
                 <div className="flex gap-4 items-center">
-                    {/* BACK BUTTON */}
-                    <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 text-black transition-colors border border-transparent hover:border-zinc-200">
-                         <ArrowLeft size={20} />
-                    </button>
+                    <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 text-black transition-colors border border-transparent hover:border-zinc-200"><ArrowLeft size={20} /></button>
                     <span className="font-title text-2xl md:text-3xl text-zinc-900 tracking-tighter">Aestho.</span>
                     <div className="h-4 w-px bg-zinc-300 hidden md:block"></div>
                     <span className="font-modern text-[10px] uppercase tracking-[0.3em] hidden md:block">{currentLayoutData?.name}</span>
                 </div>
-                <button onClick={() => window.location.reload()} className="hover:text-zinc-900 transition-colors opacity-50 hover:opacity-100">
-                    <RefreshCw size={16}/>
-                </button>
+                <button onClick={() => window.location.reload()} className="hover:text-zinc-900 transition-colors opacity-50 hover:opacity-100"><RefreshCw size={16}/></button>
             </div>
-
-            {/* Main Content: Camera + Strip Preview */}
-            {/* RESPONSIVE LAYOUT CHANGE: Flex-col on mobile to stack camera and roll */}
             <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-center p-2 md:p-4 gap-4 relative z-10 h-full overflow-hidden">
-                
-                {/* Center Camera Area */}
                 <div className="flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full shrink-0">
                      <div className="mb-2 md:mb-4 text-center z-20">
-                        <span className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black border border-zinc-200 shadow-sm">
-                            SHOT {capturedPhotos.length} / {MAX_PHOTOS}
-                        </span>
+                        <span className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black border border-zinc-200 shadow-sm">SHOT {capturedPhotos.length} / {MAX_PHOTOS}</span>
                     </div>
-
-                    {/* RESPONSIVE CAMERA CONTAINER: 
-                        - Mobile: aspect-[3/4] (Portrait) agar pas dengan layar HP
-                        - Desktop: aspect-[4/3] (Landscape) agar pas dengan webcam laptop
-                        - max-h-[60vh] di mobile agar tidak menutupi kontrol bawah
-                    */}
-                    <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 bg-white w-full md:w-auto h-auto md:h-[65vh] max-h-[50vh] md:max-h-none aspect-[3/4] md:aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100 transition-all duration-500 ease-in-out">
-                        {useMockCamera ? (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500">
-                                <span className="font-mono text-xs">Mock Camera Active</span>
-                            </div>
-                        ) : (
+                    <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 bg-white w-full md:w-auto h-auto md:h-[65vh] max-h-[50vh] md:max-h-none aspect-[3/4] md:aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100">
+                        {useMockCamera ? ( <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500"><span className="font-mono text-xs">Mock Camera Active</span></div> ) : (
                             <>
-                                {isCameraLoading && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-white z-20">
-                                        <Loader2 className="animate-spin text-zinc-300"/>
-                                    </div>
-                                )}
-                                {!cameraError ? (
-                                <video 
-                                    ref={videoRef} 
-                                    autoPlay 
-                                    playsInline 
-                                    muted 
-                                    className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0"
-                                    style={{ filter: currentFilter.style }} 
-                                />
-                                ) : (
+                                {isCameraLoading && <div className="absolute inset-0 flex items-center justify-center bg-white z-20"><Loader2 className="animate-spin text-zinc-300"/></div>}
+                                {!cameraError ? ( <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0" style={{ filter: currentFilter.style }} /> ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 z-0">
                                     <Camera size={32} />
                                     <p className="font-modern text-[10px]">Camera Error</p>
                                     <button onClick={() => setUseMockCamera(true)} className="mt-2 px-4 py-1 border border-zinc-300 text-[10px] hover:bg-zinc-100">Use Mock Camera</button>
-                                </div>
-                                )}
+                                </div> )}
                             </>
                         )}
                         {selectedMode === 'character' && (
                         <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                             {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
-                                <img 
-                                    src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} 
-                                    alt="Frame Overlay" 
-                                    // UPDATED: Added camera specific styles logic
+                                <img src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
                                     className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
-                                    style={{ 
-                                    mixBlendMode: 'normal',
-                                    filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` 
-                                    }}
-                                />
+                                    style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` }} />
                             )}
                         </div>
                         )}
-                        {isCountingDown && (
-                            <div className="absolute top-8 right-10 z-50 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">
-                                    {countdownValue}
-                                </span>
-                            </div>
-                        )}
+                        {isCountingDown && ( <div className="absolute top-8 right-10 z-50 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">{countdownValue}</span></div> )}
                     </div>
                 </div>
-
-                {/* Right Side (Desktop) / Bottom (Mobile): Live Strip Sidebar */}
-                {/* RESPONSIVE ROLL:
-                    - Mobile: Horizontal row (flex-row), fixed height (h-20/24), horizontal scroll (overflow-x-auto)
-                    - Desktop: Vertical col (flex-col), fixed height (h-[450px]), vertical scroll (overflow-y-auto)
-                */}
                 <div className="flex md:flex-col flex-row w-full md:w-32 h-20 md:h-[450px] bg-white/40 backdrop-blur-md border border-zinc-200 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
-                    <span className="hidden md:block text-[8px] font-bold text-center text-zinc-400 mb-1 sticky top-0 bg-white/90 py-1 z-10 w-full rounded shadow-sm">ROLL (8)</span>
                     {capturedPhotos.map((photo, i) => (
                         <div key={i} className="w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 shadow-sm relative bg-white flex-shrink-0">
-                             {/* ADDED: Small indicator number */}
                              <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
-                             <img src={photo} className="w-full h-full object-cover z-0 relative"/>
-                             
-                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
-                                <img 
-                                    src={getOverlayImage(selectedCharacterData, i)}
-                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`}
-                                    style={{ mixBlendMode: 'normal' }} 
-                                />
-                             )}
+                             <img src={photo} className="w-full h-full object-cover z-0 relative" alt={`Captured ${i}`}/>
+                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
                         </div>
                     ))}
-                    {/* Placeholder slots */}
-                    {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => (
-                        <div key={`empty-${i}`} className="w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 flex items-center justify-center text-zinc-300 bg-white/50 flex-shrink-0">
-                            <span className="text-[8px]">{capturedPhotos.length + i + 1}</span>
-                        </div>
-                    ))}
+                    {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 flex items-center justify-center text-zinc-300 bg-white/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
                 </div>
             </div>
-            
-            {/* Controls Bar - Responsive Padding & Size */}
             <div className="w-full pb-6 pt-2 md:pb-8 md:pt-4 flex justify-center items-center gap-6 md:gap-12 z-20">
-                 {/* 1. TONE (FILTER) */}
                  <div className="flex flex-col items-center gap-2 md:gap-3">
                      <div className="flex gap-2 md:gap-3 bg-white/50 backdrop-blur-md px-3 py-2 md:px-4 md:py-2 rounded-full border border-zinc-200 shadow-sm">
-                        {filters.map(f => (
-                            <button key={f.id} onClick={() => setCurrentFilter(f)} 
-                                className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white border-black scale-110 shadow-md' : 'text-zinc-400 border-transparent hover:text-black hover:border-zinc-300 hover:bg-white'}`}>
-                                {f.name[0]}
-                            </button>
-                        ))}
+                        {filters.map(f => ( <button key={f.id} onClick={() => setCurrentFilter(f)} className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white border-black scale-110 shadow-md' : 'text-zinc-400 border-transparent hover:text-black hover:border-zinc-300 hover:bg-white'}`}>{f.name[0]}</button> ))}
                      </div>
                      <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Tone</span>
                  </div>
-
-                 {/* 2. UPLOAD BUTTON (NEW) */}
                  <div className="flex flex-col items-center gap-2 md:gap-3">
-                     <input 
-                        type="file" 
-                        ref={fileInputRef}
-                        onChange={handleFileChange} 
-                        className="hidden" 
-                        multiple 
-                        accept="image/*"
-                     />
-                     <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center justify-center hover:bg-white hover:border-zinc-400 transition-all text-zinc-600 shadow-sm">
-                        <Upload size={16} className="md:w-5 md:h-5"/>
-                     </button>
+                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept="image/*" />
+                     <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center justify-center hover:bg-white hover:border-zinc-400 transition-all text-zinc-600 shadow-sm"><Upload size={16} className="md:w-5 md:h-5"/></button>
                      <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Upload</span>
                  </div>
-
-                 {/* 3. SHUTTER BUTTON */}
                  <div className="relative group">
-                     <button onClick={handleShutterClick} 
-                        className={`
-                            w-20 h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-sm flex items-center justify-center 
-                            transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 shadow-lg
-                            ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}
-                        `}>
+                     <button onClick={handleShutterClick} className={`w-20 h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
                         <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800'} flex items-center justify-center`}>
-                            {capturedPhotos.length >= MAX_PHOTOS ? 
-                                <Check className="text-green-500 opacity-80" size={24}/> : 
-                                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 transition-transform duration-300 group-hover:scale-90"></div>
-                            }
+                            {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 transition-transform duration-300 group-hover:scale-90"></div>}
                         </div>
                      </button>
                  </div>
-
-                 {/* 4. DELAY (TIMER) */}
                  <div className="flex flex-col items-center gap-2 md:gap-3">
-                     <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white hover:border-zinc-400 transition-all font-mono text-xs md:text-sm text-zinc-700 font-bold shadow-sm">
-                        <Clock size={14} className="opacity-70 md:w-4 md:h-4"/>
-                        <span>{timerDuration}s</span>
-                     </button>
+                     <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white hover:border-zinc-400 transition-all font-mono text-xs md:text-sm text-zinc-700 font-bold shadow-sm"><Clock size={14} className="opacity-70 md:w-4 md:h-4"/><span>{timerDuration}s</span></button>
                      <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Delay</span>
                  </div>
             </div>
         </main>
       )}
 
-      {/* --- VIEW 7: RESULT SELECTION (UPDATED) --- */}
+      {/* --- VIEW 7: RESULT SELECTION --- */}
       {currentView === 'result-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-2xl md:text-3xl">Select & Arrange</h1>
-                  <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                      CHOOSE FRAME <ArrowRight size={12}/>
-                  </button>
+                  <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">CHOOSE FRAME <ArrowRight size={12}/></button>
               </div>
-
-              {/* Responsive Layout for Selection */}
-              {/* Changed justify-center to justify-evenly on mobile to avoid squishing */}
               <div className="flex-1 flex flex-col md:flex-row w-full h-full p-4 md:p-8 gap-8 md:gap-12 justify-evenly md:justify-center items-center overflow-y-auto">
-                  
-                  {/* Strip Container */}
                   <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
                       <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center">YOUR STRIP</div>
-                      
-                      {/* Scale container slightly down on mobile to fit */}
-                      <div className={`
-                          w-[100px] md:w-[140px] h-[340px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto
-                      `}>
+                      <div className="w-[100px] md:w-[140px] h-[340px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto">
                           {selectedStripPhotos.map((photoData, index) => (
-                              <div 
-                                  key={index} 
-                                  className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0"
-                                  draggable={!!photoData}
-                                  onDragStart={(e) => handleDragStart(e, index)}
-                                  onDragOver={handleDragOver}
-                                  onDrop={(e) => handleDrop(e, index)}
-                              >
+                              <div key={index} className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
                                   {photoData ? (
                                       <>
-                                        <img src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" />
+                                        <img src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                         {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                            <img 
-                                                src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} 
-                                                className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`}
-                                                style={{ mixBlendMode: 'normal' }}
-                                            />
+                                            <img src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
                                         )}
-                                        {/* DELETE OVERLAY */}
-                                        <div 
-                                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30"
-                                            onClick={() => handleRemoveFromStrip(index)}
-                                        >
-                                            <Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" />
-                                        </div>
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                       </>
-                                  ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[10px] font-mono border-2 border-dashed border-zinc-200">
-                                          {index + 1}
-                                      </div>
-                                  )}
+                                  ) : ( <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[10px] font-mono border-2 border-dashed border-zinc-200">{index + 1}</div> )}
                               </div>
                           ))}
                           <div className="mt-auto text-center font-title text-[10px] text-black pt-1">Aestho.</div>
                       </div>
                   </div>
-
-                  {/* Captured Shots Grid */}
                   <div className="flex flex-col gap-4 w-full md:max-w-4xl h-auto md:h-full overflow-y-auto">
                       <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center md:text-left">CAPTURED SHOTS</div>
                       <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pr-0 md:pr-2 pb-20">
                           {capturedPhotos.map((photo, i) => {
                               const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
                               return (
-                                  <div key={i} 
-                                      onClick={() => !isSelected && handleSelectPhoto(photo, i)}
-                                      className={`
-                                        w-full aspect-[4/3] bg-white border border-zinc-200 relative transition-all overflow-hidden rounded-lg group
-                                        ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black hover:shadow-lg'}
-                                      `}
-                                  >
-                                      <img src={photo} className="w-full h-full object-cover" />
-                                      {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && (
-                                         <img 
-                                            src={getOverlayImage(selectedCharacterData, i)}
-                                            className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`}
-                                         />
-                                      )}
-                                      {isSelected && (
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                                              <Check className="text-white w-8 h-8 drop-shadow-md" />
-                                          </div>
-                                      )}
-                                      <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-                                        SHOT #{i+1}
-                                      </div>
+                                  <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white border border-zinc-200 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black hover:shadow-lg'}`}>
+                                      <img src={photo} className="w-full h-full object-cover" alt={`Shot ${i}`} />
+                                      {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
+                                      {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
+                                      <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
                                   </div>
                               );
                           })}
@@ -1276,52 +966,27 @@ const App = () => {
           </main>
       )}
 
-      {/* --- VIEW 8: TEMPLATE SELECTION (UPDATED RESPONSIVE) --- */}
+      {/* --- VIEW 8: TEMPLATE SELECTION --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
               <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
                   <h1 className="font-title text-2xl md:text-3xl">Choose Frame</h1>
-                  <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                      NEXT <ArrowRight size={12}/>
-                  </button>
+                  <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">NEXT <ArrowRight size={12}/></button>
               </div>
-              
-              {/* Responsive layout with justify-evenly on mobile to avoid overlap */}
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-evenly md:justify-center items-center gap-4 md:gap-10 p-4 overflow-hidden">
-                  
-                  {/* LEFT: LIVE PREVIEW (LARGE) */}
-                  {/* Added explicit height constraints for mobile */}
                   <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[50%] md:h-full relative order-1 md:order-1">
                       <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:mb-8">YOUR RESULT</span>
-                      {/* Scale down to fit comfortably on mobile */}
                       <div className="transform scale-[0.6] md:scale-100 origin-center">
-                        <AesthoStrip 
-                            template={selectedTemplate} 
-                            photos={selectedStripPhotos} 
-                            mode={selectedMode} 
-                            characterData={selectedCharacterData} 
-                            scale={0.25} // Base scale
-                        />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={0.25} />
                       </div>
                   </div>
-
-                  {/* RIGHT: TEMPLATE CHOOSER */}
-                  {/* Fixed height at bottom for mobile */}
                   <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[40%] md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-2 md:order-2 py-2">
                       <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:absolute md:top-10">SELECT FRAME</span>
-                      
                       <div className="w-full md:max-w-lg h-full overflow-x-auto snap-x snap-mandatory flex items-center gap-6 md:gap-10 hide-scrollbar px-8 md:px-20 py-2 md:py-20">
                           {stripTemplates.map((tpl) => (
                               <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
                                   <div className="pointer-events-none border border-zinc-200 shadow-sm bg-white overflow-hidden transform scale-75 md:scale-100 origin-center">
-                                       <AesthoStrip 
-                                            template={tpl} 
-                                            photos={selectedStripPhotos} 
-                                            mode={selectedMode} 
-                                            characterData={selectedCharacterData}
-                                            scale={0.15} // Fits nicely in thumbnail
-                                            shadow={false}
-                                       />
+                                       <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={0.15} shadow={false} />
                                   </div>
                                   <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500">{tpl.name}</span>
                               </div>
@@ -1332,10 +997,9 @@ const App = () => {
           </main>
       )}
 
-      {/* --- VIEW 9: FINAL RESULT (UPDATED RESPONSIVE) --- */}
+      {/* --- VIEW 9: FINAL RESULT --- */}
       {currentView === 'final-result' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-             {/* Header */}
              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
                   <div className="flex gap-4 items-center">
                     <span className="font-title text-2xl md:text-3xl">Aestho.</span>
@@ -1343,48 +1007,22 @@ const App = () => {
                   </div>
                   <div className="flex gap-4">
                       <button onClick={handleToTemplateSelection} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
-                      <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">
-                          <Download size={12}/> SAVE
-                      </button>
+                      <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider"><Download size={12}/> SAVE</button>
                   </div>
               </div>
-
-              {/* Main Content: Side-by-Side (Stacked on Mobile) */}
-              {/* Added pb-20 for scrolling space on mobile */}
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
-                  
-                  {/* LEFT: STATIC RESULT */}
-                  <div className="flex-col items-center gap-4 shrink-0 hidden md:flex">
-                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
-                      {/* Scale specifically for mobile visibility */}
-                      <div className="transform scale-[0.85] md:scale-100 origin-top">
-                        <AesthoStrip 
-                            template={selectedTemplate} 
-                            photos={selectedStripPhotos} 
-                            mode={selectedMode} 
-                            characterData={selectedCharacterData} 
-                            scale={0.25} 
-                        />
-                      </div>
-                  </div>
-
-                  {/* RIGHT: LIVE MOMENT (MOVING STRIP) */}
                   <div className="flex flex-col items-center gap-4 shrink-0">
-                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">
-                        LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                      </span>
+                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
                       <div className="transform scale-[0.85] md:scale-100 origin-top">
-                        <AesthoStrip 
-                                template={selectedTemplate} 
-                                photos={selectedStripPhotos} 
-                                clips={capturedClips} 
-                                mode={selectedMode} 
-                                characterData={selectedCharacterData} 
-                                scale={0.25}
-                        />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={0.25} />
                       </div>
                   </div>
-
+                  <div className="flex flex-col items-center gap-4 shrink-0">
+                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
+                      <div className="transform scale-[0.85] md:scale-100 origin-top">
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={0.25} />
+                      </div>
+                  </div>
               </div>
         </main>
       )}
