@@ -168,7 +168,18 @@ const App = () => {
       hoverText: 'group-hover:text-purple-800',
       icon: <Flame className="text-purple-800"/>,
       characters: [
-          { id: 'gojo', name: 'Satoru Gojo', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Gojo', theme: 'bg-blue-50' },
+          { 
+              id: 'gojo', 
+              name: 'Satoru Gojo', 
+              overlayImg: [
+                  'https://lh3.googleusercontent.com/d/1l40KbK72A885O9VwcmTemvECZ64lvdjI',
+                  'https://lh3.googleusercontent.com/d/19SpklAEzrhGX8ZnQQAM1qAgY2idg4Srb',
+                  'https://lh3.googleusercontent.com/d/1jxCPN3l30zd5_jwL0zOGggPmM6DvpUnx',
+                  'https://lh3.googleusercontent.com/d/1BDfcJwO1QG-czUuv48_h0qff-rHRaLd4'
+              ],
+              theme: 'bg-blue-50',
+              styles: { 0: 'w-[50%]', 1: 'w-[50%]', 2: 'w-[50%]', 3: 'w-[50%]' }
+          },
           { 
               id: 'nobara', 
               name: 'Nobara Kugisaki', 
@@ -179,7 +190,7 @@ const App = () => {
                   'https://lh3.googleusercontent.com/d/1l9iruV19bncgBUX4tSivk07fnoENyKpO'
               ],
               theme: 'bg-orange-50',
-              styles: { 0: 'w-[50%]' } // UPDATED: Pose 1 (index 0) diubah menjadi w-50%
+              styles: { 0: 'w-[50%]' } 
           },
           { id: 'yuji', name: 'Yuji Itadori', overlayImg: 'https://placehold.co/600x800/transparent/ef4444?text=Yuji', theme: 'bg-red-50' },
           { id: 'megumi', name: 'Megumi Fushiguro', overlayImg: 'https://placehold.co/600x800/transparent/1e293b?text=Megumi', theme: 'bg-slate-200' }
