@@ -74,7 +74,7 @@ const App = () => {
     {
       id: 'genshin', 
       name: 'Genshin Impact', 
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png',
+      logoUrl: 'https://1000logos.net/wp-content/uploads/2021/08/Genshin-Impact-Logo.png',
       color: 'hover:shadow-blue-400/50', 
       hoverText: 'group-hover:text-blue-500',
       icon: <Star className="text-blue-500"/>,
