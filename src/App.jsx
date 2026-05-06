@@ -155,7 +155,7 @@ const App = () => {
               theme: 'bg-purple-100',
               position: 'right',
               styles: { 2: 'w-[85%]' },
-              cameraStyles: { 2: 'translate-x-[15%]' } // UPDATED: Pose ke-3 geser lebih ke kanan agar berdempet dengan ujung kamera
+              cameraStyles: { 2: 'translate-x-[15%]' } 
           },
           { id: 'sparkle', name: 'Sparkle', overlayImg: 'https://placehold.co/600x800/transparent/be185d?text=Sparkle', theme: 'bg-pink-200' }
       ]
@@ -267,7 +267,7 @@ const App = () => {
           textColor: '#1e40af', 
           styleContainer: { background: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', border: '4px solid #bfdbfe' },
           photoRadius: 'rounded-lg',
-          sticker: <img src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-32 h-auto opacity-80" alt="Genshin" />
+          sticker: <img crossOrigin="anonymous" src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-32 h-auto opacity-80" alt="Genshin" />
       },
       { 
           id: 'frame-hsr', 
@@ -277,7 +277,7 @@ const App = () => {
           textColor: '#e0e7ff', 
           styleContainer: { background: 'linear-gradient(to bottom, #0f172a, #312e81)', border: '4px solid rgba(99, 102, 241, 0.3)' },
           photoRadius: 'rounded-sm',
-          sticker: <img src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-24 h-auto opacity-90 invert" alt="HSR" />
+          sticker: <img crossOrigin="anonymous" src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-24 h-auto opacity-90 invert" alt="HSR" />
       },
       { 
           id: 'frame-jjk', 
@@ -391,6 +391,10 @@ const App = () => {
   
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
   
+  // Script Loading state
+  const [isDownloadingJPG, setIsDownloadingJPG] = useState(false);
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
+
   const MAX_PHOTOS = 8;
   const videoRef = useRef(null);
   const characterListRef = useRef(null); 
@@ -398,12 +402,29 @@ const App = () => {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
+  
+  const staticStripRef = useRef(null); // Ref untuk export Canvas ke JPG
+  const baseStripRef = useRef(null); // Ref untuk base background saat render Video
 
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
 
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
+
+  // Load external scripts (html2canvas only)
+  useEffect(() => {
+    const loadScript = (src, id) => {
+        if (!document.getElementById(id)) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.id = id;
+            script.crossOrigin = "anonymous";
+            document.body.appendChild(script);
+        }
+    };
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas-script');
+  }, []);
 
   const getOverlayImage = (character, photoIndex) => {
     if (!character || !character.overlayImg) return null;
@@ -668,7 +689,221 @@ const App = () => {
       setDraggedItemIndex(null);
   };
 
-  const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true }) => {
+  // --- EXPORT / DOWNLOAD LOGIC ---
+  const downloadStaticJPG = async () => {
+      if (!window.html2canvas || !staticStripRef.current) {
+          alert("Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar dan coba lagi.");
+          return;
+      }
+      setIsDownloadingJPG(true);
+      try {
+          const canvas = await window.html2canvas(staticStripRef.current, {
+              useCORS: true,
+              allowTaint: true,
+              scale: 2, // High resolution
+              backgroundColor: null,
+          });
+          const link = document.createElement('a');
+          link.download = 'Aestho-Strip.jpg';
+          link.href = canvas.toDataURL('image/jpeg', 0.9);
+          link.click();
+      } catch (err) {
+          console.error("Failed to generate JPG", err);
+          alert("Gagal memproses gambar JPG. Pastikan koneksi internet Anda stabil.");
+      } finally {
+          setIsDownloadingJPG(false);
+      }
+  };
+
+  const downloadLiveVideo = async () => {
+      if (!window.html2canvas || !baseStripRef.current) {
+          alert("Sistem belum siap, mohon tunggu sebentar.");
+          return;
+      }
+      setIsDownloadingVideo(true);
+      
+      try {
+          // 1. Dapatkan Base Template dari HTML2Canvas
+          const baseCanvas = await window.html2canvas(baseStripRef.current, { 
+              scale: 1, 
+              useCORS: true, 
+              backgroundColor: null 
+          });
+
+          // 2. Preload semua video clip dalam array
+          const videos = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+              if(!photoData || !capturedClips[photoData.originalIndex]) return null;
+              return new Promise((resolve) => {
+                  const v = document.createElement('video');
+                  v.src = capturedClips[photoData.originalIndex];
+                  v.muted = true;
+                  v.loop = true;
+                  v.crossOrigin = "anonymous";
+                  v.oncanplay = () => resolve(v);
+                  // Paksakan load jika belum trigger event
+                  setTimeout(() => resolve(v), 1000); 
+              });
+          }));
+
+          // 3. Preload Overlays (Karakter) jika ada
+          const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+              if(!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
+              const overlayUrl = getOverlayImage(selectedCharacterData, photoData.originalIndex);
+              if(!overlayUrl) return null;
+              return new Promise((resolve) => {
+                  const img = new Image();
+                  img.crossOrigin = "anonymous";
+                  img.onload = () => resolve(img);
+                  img.onerror = () => resolve(null);
+                  img.src = overlayUrl;
+              });
+          }));
+
+          // 4. Siapkan Canvas Rekaman 600x2000
+          const recordCanvas = document.createElement('canvas');
+          recordCanvas.width = STD.W;
+          recordCanvas.height = STD.H;
+          const ctx = recordCanvas.getContext('2d');
+          
+          // 5. Setup MediaRecorder
+          const stream = recordCanvas.captureStream(30); // 30 FPS
+          let options = { mimeType: 'video/webm' };
+          if (MediaRecorder.isTypeSupported('video/mp4')) {
+              options = { mimeType: 'video/mp4' };
+          }
+          const recorder = new MediaRecorder(stream, options); 
+          const chunks = [];
+          recorder.ondataavailable = e => chunks.push(e.data);
+
+          // Cek Border Radius untuk clipping di Canvas
+          let r = 0;
+          const rClass = selectedTemplate.photoRadius || '';
+          if(rClass.includes('rounded-sm')) r = 2;
+          else if(rClass.includes('rounded-md')) r = 6;
+          else if(rClass.includes('rounded-lg')) r = 8;
+          else if(rClass.includes('rounded-xl')) r = 12;
+          else if(rClass.includes('rounded-2xl')) r = 16;
+          else if(rClass.includes('rounded-3xl')) r = 24;
+          else if(rClass.includes('rounded-[3rem]')) r = 48;
+          else if(rClass.includes('rounded-[40px]')) r = 40;
+
+          // Mainkan Video yang sudah di-load
+          videos.forEach(v => { if(v) v.play().catch(console.warn); });
+
+          // 6. Loop Rendering Canvas
+          let isRecording = true;
+          const drawFrame = () => {
+              if(!isRecording) return;
+              
+              // Gambar Background & Frame Static
+              ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+              ctx.drawImage(baseCanvas, 0, 0, STD.W, STD.H);
+              
+              // Gambar tiap Slot Foto
+              for(let i=0; i<4; i++){
+                  const photoData = selectedStripPhotos[i];
+                  if(!photoData) continue;
+                  
+                  const vx = STD.MARGIN_X;
+                  const vy = STD.MARGIN_TOP + i * (STD.PHOTO_H + STD.GAP);
+                  const vw = STD.PHOTO_W;
+                  const vh = STD.PHOTO_H;
+
+                  // Gambar Video User + Clipping Path Border Radius
+                  if(videos[i]) {
+                      ctx.save();
+                      
+                      // Bikin rounded mask
+                      ctx.beginPath();
+                      ctx.moveTo(vx + r, vy);
+                      ctx.lineTo(vx + vw - r, vy);
+                      ctx.quadraticCurveTo(vx + vw, vy, vx + vw, vy + r);
+                      ctx.lineTo(vx + vw, vy + vh - r);
+                      ctx.quadraticCurveTo(vx + vw, vy + vh, vx + vw - r, vy + vh);
+                      ctx.lineTo(vx + r, vy + vh);
+                      ctx.quadraticCurveTo(vx, vy + vh, vx, vy + vh - r);
+                      ctx.lineTo(vx, vy + r);
+                      ctx.quadraticCurveTo(vx, vy, vx + r, vy);
+                      ctx.closePath();
+                      ctx.clip();
+                      
+                      // Filter Color Tones pada video
+                      if(currentFilter.style !== 'none') {
+                          ctx.filter = currentFilter.style;
+                      }
+
+                      // Mirror Video Horizontal
+                      ctx.translate(vx + vw, vy);
+                      ctx.scale(-1, 1);
+                      ctx.drawImage(videos[i], 0, 0, vw, vh);
+                      ctx.restore();
+                  }
+                  
+                  // Gambar Overlay Karakter Anime diatas Video
+                  if(overlays[i]) {
+                      ctx.save();
+                      if(currentFilter.style !== 'none') {
+                          ctx.filter = `${currentFilter.style} brightness(1.1)`;
+                      }
+
+                      const img = overlays[i];
+                      const wClass = getOverlayWidth(selectedCharacterData, photoData.originalIndex);
+                      let pct = 0.6;
+                      if(wClass.includes('w-[50%]')) pct = 0.5;
+                      if(wClass.includes('w-[85%]')) pct = 0.85;
+                      
+                      const ow = vw * pct;
+                      const oh = (img.height / img.width) * ow;
+                      
+                      // Koordinat X Overlay
+                      let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
+                      // Tambahan Offset jika ada di pengaturan data
+                      if(selectedCharacterData.cameraStyles && selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex/2)]) {
+                         if(wClass.includes('w-[85%]')) ox += (ow * 0.15); 
+                      }
+                      const oy = vy + vh - oh;
+                      
+                      ctx.drawImage(img, ox, oy, ow, oh);
+                      ctx.restore();
+                  }
+              }
+              
+              requestAnimationFrame(drawFrame);
+          };
+
+          // 7. Pengaturan Stop Record -> Download
+          recorder.onstop = () => {
+              isRecording = false;
+              // Berhentikan semua video background memory
+              videos.forEach(v => { if(v) { v.pause(); v.src = ""; }});
+              
+              const ext = options.mimeType === 'video/mp4' ? 'mp4' : 'webm';
+              const blob = new Blob(chunks, { type: options.mimeType });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Aestho-Live-Strip.${ext}`; 
+              a.click();
+              
+              setIsDownloadingVideo(false);
+          };
+
+          recorder.start();
+          drawFrame(); // Mulai loop frame
+          
+          // Rekam selama 3.5 detik 
+          setTimeout(() => {
+              recorder.stop();
+          }, 3500);
+
+      } catch (err) {
+          console.error("Failed to generate Video", err);
+          alert("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
+          setIsDownloadingVideo(false);
+      }
+  };
+
+  const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true, stripRef }) => {
     const wrapperStyle = { width: `${STD.W * scale}px`, height: `${STD.H * scale}px`, position: 'relative', flexShrink: 0 };
     const stripTransformStyle = { width: `${STD.W}px`, height: `${STD.H}px`, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 };
     const stripContentStyle = { width: '100%', height: '100%', paddingTop: `${STD.MARGIN_TOP}px`, paddingLeft: `${STD.MARGIN_X}px`, paddingRight: `${STD.MARGIN_X}px`, gap: `${STD.GAP}px`, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', backgroundColor: template.bgColor, ...template.styleContainer };
@@ -676,7 +911,7 @@ const App = () => {
 
     return (
         <div style={wrapperStyle}>
-            <div className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`} style={stripTransformStyle}>
+            <div ref={stripRef} className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`} style={stripTransformStyle}>
                 <div style={stripContentStyle}>
                     {template.sticker && <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">{template.sticker}</div>}
                     {photos.map((photoData, index) => (
@@ -684,10 +919,10 @@ const App = () => {
                             {photoData ? (
                                 <>
                                     {clips && clips[photoData.originalIndex] ? (
-                                        <video src={clips[photoData.originalIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
-                                    ) : ( <img src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/> )}
+                                        <video crossOrigin="anonymous" src={clips[photoData.originalIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
+                                    ) : ( <img crossOrigin="anonymous" src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/> )}
                                     {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
-                                        <img src={getOverlayImage(characterData, photoData.originalIndex)} className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay" />
+                                        <img crossOrigin="anonymous" src={getOverlayImage(characterData, photoData.originalIndex)} className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay" />
                                     )}
                                 </>
                             ) : ( <div className="w-full h-full bg-white opacity-20"></div> )}
@@ -802,7 +1037,7 @@ const App = () => {
                     {animeOptions.map((a) => (
                         <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 rounded-xl p-6 w-36 h-44 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black shadow-sm group`}>
                              <div className="opacity-50">{a.icon}</div>
-                             <img src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
+                             <img crossOrigin="anonymous" src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
                              <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black`}>{a.name}</span>
                         </div>
                     ))}
@@ -831,7 +1066,7 @@ const App = () => {
                                       {[...Array(4)].map((_, i) => (
                                           <div key={i} className="flex-1 bg-zinc-50 relative overflow-hidden border border-zinc-100 shadow-inner">
                                               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
-                                              {getOverlayImage(char, i * 2) && ( <img src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
+                                              {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
                                           </div>
                                       ))}
                                   </div>
@@ -883,7 +1118,7 @@ const App = () => {
                         {selectedMode === 'character' && (
                         <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                             {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
-                                <img src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
+                                <img crossOrigin="anonymous" src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
                                     className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
                                     style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` }} />
                             )}
@@ -896,8 +1131,8 @@ const App = () => {
                     {capturedPhotos.map((photo, i) => (
                         <div key={i} className="w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 shadow-sm relative bg-white flex-shrink-0">
                              <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
-                             <img src={photo} className="w-full h-full object-cover z-0 relative" alt={`Captured ${i}`}/>
-                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
+                             <img crossOrigin="anonymous" src={photo} className="w-full h-full object-cover z-0 relative" alt={`Captured ${i}`}/>
+                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
                         </div>
                     ))}
                     {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 flex items-center justify-center text-zinc-300 bg-white/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
@@ -945,9 +1180,9 @@ const App = () => {
                               <div key={index} className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
                                   {photoData ? (
                                       <>
-                                        <img src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" alt="Selected" />
+                                        <img crossOrigin="anonymous" src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                         {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                            <img src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
+                                            <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
                                         )}
                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                       </>
@@ -964,8 +1199,8 @@ const App = () => {
                               const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
                               return (
                                   <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white border border-zinc-200 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black hover:shadow-lg'}`}>
-                                      <img src={photo} className="w-full h-full object-cover" alt={`Shot ${i}`} />
-                                      {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
+                                      <img crossOrigin="anonymous" src={photo} className="w-full h-full object-cover" alt={`Shot ${i}`} />
+                                      {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
                                       {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
                                       <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
                                   </div>
@@ -1016,11 +1251,27 @@ const App = () => {
                     <span className="font-title text-2xl md:text-3xl">Aestho.</span>
                     <span className="font-modern text-[10px] tracking-widest text-zinc-400 hidden md:block">FINAL RESULT</span>
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-2 md:gap-4">
                       <button onClick={handleToTemplateSelection} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
-                      <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider"><Download size={12}/> SAVE</button>
+                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all">
+                          {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
+                      </button>
+                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all">
+                          {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
+                      </button>
                   </div>
               </div>
+              
+              {/* HIDDEN RENDER: Untuk mendapatkan resolusi maksimal Canvas JPG */}
+              <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                  <AesthoStrip stripRef={staticStripRef} template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={1} shadow={false} />
+              </div>
+              
+              {/* HIDDEN RENDER: Untuk mendapatkan Frame kosong Video */}
+              <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                  <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={[null,null,null,null]} mode="original" scale={1} shadow={false} />
+              </div>
+
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
                   <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
