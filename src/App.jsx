@@ -246,6 +246,28 @@ const App = () => {
           hideFooter: true
       },
       { 
+          id: 'aestho-starwars', 
+          name: 'Aestho Starwars', 
+          type: 'css', 
+          bgColor: '#000000', 
+          textColor: '#ffe81f',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1A8vVuVvjWx4x-ZrubsGwzxfuwFpVJWq4',
+          styleContainer: { backgroundColor: 'black' },
+          photoRadius: 'rounded-sm',
+          hideFooter: true
+      },
+      { 
+          id: 'aestho-jungle', 
+          name: 'Aestho Jungle', 
+          type: 'css', 
+          bgColor: '#064e3b', 
+          textColor: '#a7f3d0',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1-_bxhFm1G_rZSOpdXJfoqGhlhxlavhcL',
+          styleContainer: { backgroundColor: '#064e3b' },
+          photoRadius: 'rounded-sm',
+          hideFooter: true
+      },
+      { 
           id: 'cinnamon-roll', 
           name: 'Cloudy Frame', 
           type: 'css', 
