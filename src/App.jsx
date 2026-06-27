@@ -104,7 +104,7 @@ const App = () => {
             ],
             theme: 'bg-pink-50',
             position: 'right',
-            styles: { 0: 'w-[90%]', 1: 'w-[90%]', 2: 'w-[90%]', 3: 'w-[90%]' }
+            styles: { 0: 'w-[95%]', 1: 'w-[95%]', 2: 'w-[95%]', 3: 'w-[95%]' }
         },
         { 
             id: 'lumine', 
@@ -115,7 +115,9 @@ const App = () => {
                 'https://lh3.googleusercontent.com/d/1vrkdlhBgfkWJ1WW3o4TnuLF495aYuXbo',
                 'https://lh3.googleusercontent.com/d/1Adb38lJxh3uoRxjG8Iihe8ZoNOP9R4ah'
             ],
-            theme: 'bg-yellow-100' 
+            theme: 'bg-yellow-100', 
+            position: 'left',
+            styles: { 0: 'w-[60%]', 1: 'w-[60%]', 2: 'w-[60%]', 3: 'w-[60%]' }
         },
         { id: 'tartaglia', name: 'Tartaglia', overlayImg: 'https://placehold.co/600x800/transparent/ef4444?text=Tartaglia+Pose', theme: 'bg-red-50' },
         { id: 'ganyu', name: 'Ganyu', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Ganyu+Pose', theme: 'bg-blue-100' }
