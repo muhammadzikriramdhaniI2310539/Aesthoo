@@ -93,16 +93,18 @@ const App = () => {
         { id: 'zhongli', name: 'Zhongli', overlayImg: 'https://placehold.co/600x800/transparent/d97706?text=Zhongli+Pose', theme: 'bg-yellow-50' },
         { id: 'raiden', name: 'Raiden Shogun', overlayImg: 'https://placehold.co/600x800/transparent/9333ea?text=Raiden+Pose', theme: 'bg-purple-50' },
         { id: 'nahida', name: 'Nahida', overlayImg: 'https://placehold.co/600x800/transparent/22c55e?text=Nahida+Pose', theme: 'bg-green-50' },
-        { 
+       { 
             id: 'citlali', 
             name: 'Citlali', 
             overlayImg: [
-                'https://lh3.googleusercontent.com/d/1bXuCo6unhBdlIGXPXV7GW3W2wI4NAEwz',
-                'https://lh3.googleusercontent.com/d/1lZE-TRE2OqVMH7Y0j5EyjEEwDMTOXCls',
-                'https://lh3.googleusercontent.com/d/1rlhTH22wlx_LNUbpemamPMngQN-mpXqq',
-                'https://lh3.googleusercontent.com/d/1IJ2jk4acSeMyToisLfoQieB2GI8hWa_R'
+                'https://lh3.googleusercontent.com/d/1d01tMQt3SmV_qZU9E7fuePHL31ECsSkV',
+                'https://lh3.googleusercontent.com/d/1cxQqUJx_qVnUpLfi05pKtmfFMmesY6on',
+                'https://lh3.googleusercontent.com/d/193AWYYZX4ZqfH28wxIVY0ipaNmBEcR06',
+                'https://lh3.googleusercontent.com/d/1zCKSvo_c0yzG2p6aI2f5D1eukkbElN-V'
             ],
-            theme: 'bg-pink-50' 
+            theme: 'bg-pink-50',
+            position: 'right',
+            styles: { 0: 'w-[90%]', 1: 'w-[90%]', 2: 'w-[90%]', 3: 'w-[90%]' }
         },
         { 
             id: 'lumine', 
