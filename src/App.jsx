@@ -1330,7 +1330,7 @@ const App = () => {
                   <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[50%] md:h-full relative order-1 md:order-1">
                       <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:mb-8">YOUR RESULT</span>
                       <div className="transform scale-[0.6] md:scale-100 origin-center">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.15 : 0.25} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.25 : 0.25} layoutConfig={getLayoutConfig(selectedLayout)} />
                       </div>
                   </div>
                   <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[40%] md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-2 md:order-2 py-2">
@@ -1383,13 +1383,13 @@ const App = () => {
                   <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
                       <div className="transform scale-[0.85] md:scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.15 : 0.25} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.30 : 0.30} layoutConfig={getLayoutConfig(selectedLayout)} />
                       </div>
                   </div>
                   <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
                       <div className="transform scale-[0.85] md:scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.15 : 0.25} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={selectedLayout === 'grid-4r' ? 0.30 : 0.30} layoutConfig={getLayoutConfig(selectedLayout)} />
                       </div>
                   </div>
               </div>
