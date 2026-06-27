@@ -829,7 +829,27 @@ const App = () => {
                   v.crossOrigin = "anonymous";
                   v.oncanplay = () => resolve(v);
                   // Paksakan load jika belum trigger event
-                  setTimeout(() => resolve(v), 1000); 
+                  setTimeout(() => resolve(v), 1500); 
+              });
+          }));
+
+          // 3. Preload Gambar Overlay Karakter (PERBAIKAN ERROR)
+          // Sebelumnya array overlays tidak didefinisikan sehingga menyebabkan error saat drawing
+          const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+              if(!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
+              
+              const overlayUrl = getOverlayImage(selectedCharacterData, photoData.originalIndex);
+              if(!overlayUrl) return null;
+
+              return new Promise((resolve) => {
+                  const img = new Image();
+                  img.crossOrigin = "anonymous";
+                  img.onload = () => resolve(img);
+                  img.onerror = () => {
+                      console.warn("Failed to load overlay image:", overlayUrl);
+                      resolve(null); // Resolve dengan null agar tidak membatalkan seluruh proses
+                  };
+                  img.src = overlayUrl;
               });
           }));
 
@@ -847,7 +867,7 @@ const App = () => {
           }
           const recorder = new MediaRecorder(stream, options); 
           const chunks = [];
-          recorder.ondataavailable = e => chunks.push(e.data);
+          recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
           // Cek Border Radius untuk clipping di Canvas
           let r = 0;
@@ -916,7 +936,7 @@ const App = () => {
                       ctx.restore();
                   }
                   
-                  // Gambar Overlay Karakter Anime diatas Video
+                  // Gambar Overlay Karakter Anime diatas Video (Sekarang tidak akan error)
                   if(overlays[i]) {
                       ctx.save();
                       if(currentFilter.style !== 'none') {
@@ -970,13 +990,15 @@ const App = () => {
           
           // Rekam selama 3.5 detik 
           setTimeout(() => {
-              recorder.stop();
+              if (recorder.state === "recording") {
+                  recorder.stop();
+              }
           }, 3500);
 
       } catch (err) {
           console.error("Failed to generate Video", err);
-          alert("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
-          setIsDownloadingVideo(false);
+          alert("Gagal memproses Video. Pastikan koneksi internet stabil dan resource dimuat dengan benar.");
+          setIsDownloadingVideo(false); // Pastikan state kembali normal jika gagal
       }
   };
 
