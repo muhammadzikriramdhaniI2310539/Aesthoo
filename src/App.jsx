@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -455,6 +455,19 @@ const App = () => {
   // 2. LOGIC APLIKASI
   // ==================================================================================
 
+  const defaultStickers = [
+    'https://cdn-icons-png.flaticon.com/512/763/763725.png', // ribbon
+    'https://cdn-icons-png.flaticon.com/512/1077/1077221.png', // paw
+    'https://cdn-icons-png.flaticon.com/512/138/138533.png', // heart
+    'https://cdn-icons-png.flaticon.com/512/1188/1188098.png', // star
+    'https://cdn-icons-png.flaticon.com/512/2850/2850731.png', // moon
+    'https://cdn-icons-png.flaticon.com/512/732/732221.png', // letter
+    'https://cdn-icons-png.flaticon.com/512/2913/2913008.png', // sparkle
+    'https://cdn-icons-png.flaticon.com/512/833/833472.png', // solid heart
+    'https://cdn-icons-png.flaticon.com/512/1164/1164620.png', // glasses
+    'https://cdn-icons-png.flaticon.com/512/1046/1046374.png' // crown
+  ];
+
   const [currentView, setCurrentView] = useState('home'); 
   const [selectedLayout, setSelectedLayout] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
@@ -471,6 +484,13 @@ const App = () => {
   
   const [selectedStripPhotos, setSelectedStripPhotos] = useState([null, null, null, null]); 
   
+  // Sticker State
+  const [placedStickers, setPlacedStickers] = useState([]);
+  const [userStickers, setUserStickers] = useState([]);
+  const [activeStickerId, setActiveStickerId] = useState(null);
+  const [dragState, setDragState] = useState({ isDragging: false, id: null, startX: 0, startY: 0, initX: 0, initY: 0, scale: 1 });
+  const stickerUploadRef = useRef(null);
+
   // Script Loading state
   const [isDownloadingJPG, setIsDownloadingJPG] = useState(false);
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
@@ -603,7 +623,15 @@ const App = () => {
       }
       setCurrentView('template-selection');
   };
-  const handleToFinalResult = () => setCurrentView('final-result'); 
+  
+  const handleToStickerEditor = () => setCurrentView('sticker-editor');
+  
+  const handleBackToTemplate = () => setCurrentView('template-selection');
+  
+  const handleToFinalResult = () => {
+      setActiveStickerId(null);
+      setCurrentView('final-result'); 
+  };
   const handleBackToHome = () => { setCurrentView('home'); setSelectedLayout(null); };
   const handleBackToLayout = () => { setCurrentView('layout'); setSelectedMode(null); };
   const handleBackToMode = () => { setCurrentView('mode'); setSelectedAnime(null); };
@@ -776,6 +804,62 @@ const App = () => {
       setDraggedItemIndex(null);
   };
 
+  // --- STICKER LOGIC ---
+  const handleAddSticker = (url) => {
+      const config = getLayoutConfig(selectedLayout);
+      const newSticker = {
+          id: Date.now().toString(),
+          url,
+          x: config.W / 2 - 100, // Spawn di tengah
+          y: config.H / 2 - 100,
+          w: 200, // Ukuran dasar stiker relatif ke kanvas asli
+          h: 200
+      };
+      setPlacedStickers([...placedStickers, newSticker]);
+      setActiveStickerId(newSticker.id);
+  };
+
+  const handleStickerUpload = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const url = event.target.result;
+          setUserStickers(prev => [...prev, url]);
+          handleAddSticker(url);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+  };
+
+  const removeSticker = (id) => {
+      setPlacedStickers(prev => prev.filter(s => s.id !== id));
+      if (activeStickerId === id) setActiveStickerId(null);
+  };
+
+  // Logic Tarik Geser (Drag)
+  const onStickerPointerDown = (e, id, currentX, currentY, scale) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveStickerId(id);
+      setDragState({ isDragging: true, id, startX: e.clientX, startY: e.clientY, initX: currentX, initY: currentY, scale });
+  };
+
+  const onWorkspacePointerMove = (e) => {
+      if (dragState.isDragging && dragState.id) {
+          const dx = (e.clientX - dragState.startX) / dragState.scale;
+          const dy = (e.clientY - dragState.startY) / dragState.scale;
+          setPlacedStickers(prev => prev.map(s => 
+              s.id === dragState.id ? { ...s, x: dragState.initX + dx, y: dragState.initY + dy } : s
+          ));
+      }
+  };
+
+  const onWorkspacePointerUp = () => {
+      if (dragState.isDragging) setDragState(prev => ({ ...prev, isDragging: false }));
+  };
+  // --- END STICKER LOGIC ---
+
   // --- EXPORT / DOWNLOAD LOGIC ---
   const downloadStaticJPG = async () => {
       if (!window.html2canvas || !staticStripRef.current) {
@@ -850,6 +934,17 @@ const App = () => {
                       resolve(null); // Resolve dengan null agar tidak membatalkan seluruh proses
                   };
                   img.src = overlayUrl;
+              });
+          }));
+
+          // 3.5 Preload Placed Stickers
+          const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
+              return new Promise((resolve) => {
+                  const img = new Image();
+                  img.crossOrigin = "anonymous";
+                  img.onload = () => resolve({ img, ...stk });
+                  img.onerror = () => resolve(null);
+                  img.src = stk.url;
               });
           }));
 
@@ -965,6 +1060,13 @@ const App = () => {
                   }
               }
               
+              // Gambar Stickers diatas semuanya
+              stickersImages.forEach(stk => {
+                  if (stk && stk.img) {
+                      ctx.drawImage(stk.img, stk.x, stk.y, stk.w, stk.h);
+                  }
+              });
+              
               requestAnimationFrame(drawFrame);
           };
 
@@ -990,19 +1092,19 @@ const App = () => {
           
           // Rekam selama 3.5 detik 
           setTimeout(() => {
-              if (recorder.state === "recording") {
-                  recorder.stop();
+              if (recorder.state === 'recording') {
+                 recorder.stop();
               }
           }, 3500);
 
       } catch (err) {
           console.error("Failed to generate Video", err);
-          alert("Gagal memproses Video. Pastikan koneksi internet stabil dan resource dimuat dengan benar.");
-          setIsDownloadingVideo(false); // Pastikan state kembali normal jika gagal
+          alert("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
+          setIsDownloadingVideo(false);
       }
   };
 
-  const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true, stripRef, layoutConfig }) => {
+  const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true, stripRef, layoutConfig, isEditable = false, showPlacedStickers = true }) => {
     const config = layoutConfig || getLayoutConfig('classic-white');
     const wrapperStyle = { width: `${config.W * scale}px`, height: `${config.H * scale}px`, position: 'relative', flexShrink: 0 };
     const stripTransformStyle = { width: `${config.W}px`, height: `${config.H}px`, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 };
@@ -1041,15 +1143,73 @@ const App = () => {
                             <span className={`font-title ${template.id === 'aestho-signature' ? 'rotate-[-2deg]' : ''}`} style={{ color: template.textColor, fontSize: config.W === 1200 ? '96px' : '64px' }}> Aestho. </span> 
                         </div>
                     )}
+
+                    {/* FRAME OVERLAY DARI DRIVE: di atas foto, tapi di bawah stiker */}
+                    {template.overlayUrl && (
+                        <div
+                            className="absolute inset-0 z-30 pointer-events-none"
+                            style={{
+                                backgroundImage: `url(${template.overlayUrl})`,
+                                backgroundSize: '100% 100%',
+                                backgroundRepeat: 'no-repeat'
+                            }}
+                        />
+                    )}
+
+                    {/* RENDER PLACED STICKERS: z-index lebih tinggi dari frame */}
+                    {showPlacedStickers && placedStickers.map(stk => (
+                        <div
+                            key={stk.id}
+                            style={{
+                                position: 'absolute',
+                                left: `${stk.x}px`,
+                                top: `${stk.y}px`,
+                                width: `${stk.w}px`,
+                                height: `${stk.h}px`,
+                                cursor: isEditable ? (activeStickerId === stk.id ? 'grabbing' : 'grab') : 'default',
+                                zIndex: 50,
+                                border: isEditable && activeStickerId === stk.id ? '2px dashed rgba(0,0,0,0.5)' : 'none',
+                                boxShadow: isEditable && activeStickerId === stk.id ? '0 0 0 2px white' : 'none'
+                            }}
+                            onPointerDown={(e) => isEditable && onStickerPointerDown(e, stk.id, stk.x, stk.y, scale)}
+                        >
+                            <img
+                                src={stk.url}
+                                crossOrigin="anonymous"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    pointerEvents: 'none'
+                                }}
+                                alt="sticker"
+                            />
+
+                            {isEditable && activeStickerId === stk.id && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeSticker(stk.id);
+                                    }}
+                                    className="absolute -top-6 -right-6 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 shadow-xl cursor-pointer"
+                                    style={{ pointerEvents: 'auto' }}
+                                >
+                                    <X size={18} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
                 </div>
-                {template.overlayUrl && <div className="absolute inset-0 z-20 pointer-events-none" style={{ backgroundImage: `url(${template.overlayUrl})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' }} />}
             </div>
         </div>
     );
   };
 
   return (
-    <div className="relative w-full h-screen bg-[#FDFDFD] overflow-hidden font-sans selection:bg-black selection:text-white">
+    <div className="relative w-full h-screen bg-[#FDFDFD] overflow-hidden font-sans selection:bg-black selection:text-white"
+         onPointerMove={currentView === 'sticker-editor' ? onWorkspacePointerMove : undefined}
+         onPointerUp={currentView === 'sticker-editor' ? onWorkspacePointerUp : undefined}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Niconne&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Syncopate:wght@400;700&display=swap');
         .font-title { font-family: 'Niconne', cursive; }
@@ -1058,6 +1218,13 @@ const App = () => {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      {/* HEADER LOGO */}
+      {currentView !== 'home' && currentView !== 'camera-session' && (
+        <div className="fixed top-0 left-0 w-full p-4 md:p-6 z-[60] pointer-events-none flex items-center justify-between">
+           <img crossOrigin="anonymous" src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Logo" className="h-8 md:h-12 w-auto object-contain pointer-events-auto" onError={(e) => { e.target.style.display = 'none'; }} />
+        </div>
+      )}
 
       {/* GLOBAL BRANDING / WATERMARK */}
       <div className="fixed bottom-6 left-6 z-[60] opacity-40 hover:opacity-100 transition-all duration-300 group cursor-default">
@@ -1234,7 +1401,7 @@ const App = () => {
                             )}
                         </div>
                         )}
-                        {isCountingDown && ( <div className="absolute top-8 right-10 z-50 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">{countdownValue}</span></div> )}
+                        {isCountingDown && ( <div className="absolute top-8 right-10 z-100 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">{countdownValue}</span></div> )}
                     </div>
                 </div>
                 <div className="flex md:flex-col flex-row w-full md:w-32 h-20 md:h-[450px] bg-white/40 backdrop-blur-md border border-zinc-200 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
@@ -1344,9 +1511,9 @@ const App = () => {
       {/* --- VIEW 8: TEMPLATE SELECTION --- */}
       {currentView === 'template-selection' && (
           <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
+              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200 pl-24 md:pl-48">
                   <h1 className="font-title text-2xl md:text-3xl">Choose Frame</h1>
-                  <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">NEXT <ArrowRight size={12}/></button>
+                  <button onClick={handleToStickerEditor} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">NEXT <ArrowRight size={12}/></button>
               </div>
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-evenly md:justify-center items-center gap-4 md:gap-10 p-4 overflow-hidden">
                   <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-[50%] md:h-full relative order-1 md:order-1">
@@ -1372,16 +1539,79 @@ const App = () => {
           </main>
       )}
 
+      {/* --- VIEW 8.5: STICKER EDITOR --- */}
+      {currentView === 'sticker-editor' && (
+          <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden" onClick={() => setActiveStickerId(null)}>
+              <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200 pl-24 md:pl-48 bg-white z-40 relative shadow-sm">
+                  <h1 className="font-title text-2xl md:text-3xl">Decorate Strip</h1>
+                  <div className="flex gap-2 md:gap-4">
+                      <button onClick={handleBackToTemplate} className="text-zinc-500 hover:text-black font-modern text-[10px] uppercase hidden md:block">Back</button>
+                      <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider shadow-md hover:shadow-lg transition-all">FINISH <Check size={12}/></button>
+                  </div>
+              </div>
+              
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full overflow-hidden">
+                  {/* Kiri: Canvas */}
+                  <div className="flex-1 flex items-center justify-center bg-zinc-100 p-4 relative overflow-auto border-r border-zinc-200 hide-scrollbar cursor-crosshair">
+                      <div className="transform origin-center flex items-center justify-center my-auto transition-transform duration-300" 
+                           onClick={(e) => e.stopPropagation()}>
+                          <AesthoStrip 
+                             template={selectedTemplate} 
+                             photos={selectedStripPhotos} 
+                             mode={selectedMode} 
+                             characterData={selectedCharacterData} 
+                             scale={selectedLayout === 'grid-4r' ? 0.35 : 0.25} 
+                             layoutConfig={getLayoutConfig(selectedLayout)}
+                             isEditable={true} 
+                          />
+                      </div>
+                      <span className="absolute bottom-6 left-1/2 transform -translate-x-1/2 font-modern text-[10px] text-zinc-500 bg-white/90 px-6 py-2 rounded-full shadow-sm backdrop-blur-md pointer-events-none border border-zinc-200 uppercase tracking-widest hidden md:block">Click & Drag Stickers to Move</span>
+                  </div>
+                  
+                  {/* Kanan: Sidebar Sticker Palette */}
+                  <div className="w-full md:w-[380px] bg-white h-full flex flex-col z-10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      <div className="p-5 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                          <h3 className="font-modern text-xs font-bold tracking-[0.2em] text-zinc-800 uppercase">Stickers</h3>
+                          <button onClick={() => {setPlacedStickers([]); setActiveStickerId(null);}} className="text-[10px] font-modern tracking-widest text-red-500 hover:text-red-700 uppercase bg-red-50 px-3 py-1 rounded-full">Clear All</button>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto p-5 hide-scrollbar grid grid-cols-3 gap-4 content-start bg-[#FDFDFD]">
+                          {/* Upload User Button */}
+                          <div onClick={() => stickerUploadRef.current?.click()} className="aspect-square rounded-2xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-zinc-50 hover:border-zinc-400 transition-all text-zinc-400 bg-white shadow-sm hover:shadow-md">
+                              <ImagePlus size={20} />
+                              <span className="text-[8px] font-modern uppercase tracking-wider">Upload</span>
+                              <input type="file" ref={stickerUploadRef} onChange={handleStickerUpload} className="hidden" accept="image/png, image/jpeg, image/gif, image/webp" />
+                          </div>
+                          
+                          {/* User Stickers */}
+                          {userStickers.map((url, i) => (
+                              <div key={`user-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white border border-zinc-100 p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
+                                  <img src={url} alt="User Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform" />
+                              </div>
+                          ))}
+
+                          {/* Default Theme Stickers */}
+                          {defaultStickers.map((url, i) => (
+                              <div key={`def-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white border border-zinc-100 p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
+                                  <img src={url} alt="Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform opacity-90 group-hover:opacity-100" />
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </main>
+      )}
+
       {/* --- VIEW 9: FINAL RESULT --- */}
       {currentView === 'final-result' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-             <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200">
+             <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200 pl-24 md:pl-48">
                   <div className="flex gap-4 items-center">
-                    <span className="font-title text-2xl md:text-3xl">Aestho.</span>
-                    <span className="font-modern text-[10px] tracking-widest text-zinc-400 hidden md:block">FINAL RESULT</span>
+                    <span className="font-title text-2xl md:text-3xl hidden md:block">Aestho.</span>
+                    <span className="font-modern text-[10px] tracking-widest text-zinc-400">FINAL RESULT</span>
                   </div>
                   <div className="flex gap-2 md:gap-4">
-                      <button onClick={handleToTemplateSelection} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
+                      <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
                       <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all">
                           {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
                       </button>
@@ -1398,7 +1628,7 @@ const App = () => {
               
               {/* HIDDEN RENDER: Untuk mendapatkan Frame kosong Video */}
               <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
-                  <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
+                  <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
               </div>
 
               <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
