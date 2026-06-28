@@ -110,10 +110,10 @@ const App = () => {
             id: 'furina', 
             name: 'Furina', 
             overlayImg: [
-                'https://lh3.googleusercontent.com/d/1V8zQmWfsT_E-2Mc9saw8ATKbnLfBgl3j',
-                'https://lh3.googleusercontent.com/d/1fNeMCvMdZTUlyGqScPPJWi6aSfDb4lC8',
-                'https://lh3.googleusercontent.com/d/1VhsEemnLSyNcdjUW2AFyjCCCijiXtw_U',
-                'https://lh3.googleusercontent.com/d/1B53UXD3yWMsouHTSwUpn4vP_T8oRyvvU'
+                '',
+                '',
+                '',
+                ''
             ],
             theme: 'bg-blue-50' 
         },
@@ -137,10 +137,10 @@ const App = () => {
             id: 'lumine', 
             name: 'Lumine', 
             overlayImg: [
-                'https://lh3.googleusercontent.com/d/1zyYfTf7ERipNpki16jizFPBaeI_jsyl0',
-                'https://lh3.googleusercontent.com/d/13Tsrw59z0BsRGWB6ByYvCl9lDu1w0lIu',
-                'https://lh3.googleusercontent.com/d/1vrkdlhBgfkWJ1WW3o4TnuLF495aYuXbo',
-                'https://lh3.googleusercontent.com/d/1Adb38lJxh3uoRxjG8Iihe8ZoNOP9R4ah'
+                '',
+                '',
+                '',
+                ''
             ],
             theme: 'bg-yellow-100', 
             position: 'left',
@@ -162,10 +162,10 @@ const App = () => {
               id: 'bronya', 
               name: 'Bronya', 
               overlayImg: [
-                  'https://lh3.googleusercontent.com/d/18Bgd9-lYxFhNRfzIdAFBUYyN9jjUtMA7',
-                  'https://lh3.googleusercontent.com/d/1GAgjZkKAR7pgcGKDwBL3RMhfTR1y2B7b',
-                  'https://lh3.googleusercontent.com/d/1lWGdmQCXzuCIh_eX_95uSx_cJP9_36TE',
-                  'https://lh3.googleusercontent.com/d/1jt-yV5I8m1O7-GmTXw3qVm3SoyRS0s6K'
+                  '',
+                  '',
+                  '',
+                  ''
               ],
               theme: 'bg-indigo-50' 
           },
@@ -178,10 +178,10 @@ const App = () => {
               id: 'silverwolf', 
               name: 'Silver Wolf', 
               overlayImg: [
-                'https://lh3.googleusercontent.com/d/1T0uTImpAy1oXrSYUO4GeBWwpH1vPsvxG',
-                'https://lh3.googleusercontent.com/d/1OlRAMD2fe3s7bN7y4EfwpD_53CiTVpF1',
-                'https://lh3.googleusercontent.com/d/1-Sc-sYQSJOfcLGArfz_OSciLVGsbJeC-',
-                'https://lh3.googleusercontent.com/d/1EwtUpa1ZVQsJYYaIJ9oZ15c4C5AEuk3T'
+                '',
+                '',
+                '',
+                ''
               ],
               theme: 'bg-purple-100',
               position: 'right',
@@ -203,10 +203,10 @@ const App = () => {
               id: 'gojo', 
               name: 'Satoru Gojo', 
               overlayImg: [
-                  'https://lh3.googleusercontent.com/d/1l40KbK72A885O9VwcmTemvECZ64lvdjI',
-                  'https://lh3.googleusercontent.com/d/19SpklAEzrhGX8ZnQQAM1qAgY2idg4Srb',
-                  'https://lh3.googleusercontent.com/d/1jxCPN3l30zd5_jwL0zOGggPmM6DvpUnx',
-                  'https://lh3.googleusercontent.com/d/1BDfcJwO1QG-czUuv48_h0qff-rHRaLd4'
+                  '',
+                  '',
+                  '',
+                  ''
               ],
               theme: 'bg-blue-50',
               styles: { 0: 'w-[50%]', 1: 'w-[50%]', 2: 'w-[50%]', 3: 'w-[50%]' }
@@ -215,10 +215,10 @@ const App = () => {
               id: 'nobara', 
               name: 'Nobara Kugisaki', 
               overlayImg: [
-                  'https://lh3.googleusercontent.com/d/1PxL5ajHWYhdrjqLFW9_-olau5PqnKCuX',
-                  'https://lh3.googleusercontent.com/d/1ISfVxep7RWK2Sq1oSnwktjq80O1t99z8',
-                  'https://lh3.googleusercontent.com/d/1fZTm5aDwVrdqaZBtN3WvQkwq_O-Zg6Et',
-                  'https://lh3.googleusercontent.com/d/1l9iruV19bncgBUX4tSivk07fnoENyKpO'
+                  '',
+                  '',
+                  '',
+                  ''
               ],
               theme: 'bg-orange-50',
               styles: { 0: 'w-[50%]' } 
