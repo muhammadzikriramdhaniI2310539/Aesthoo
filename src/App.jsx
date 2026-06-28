@@ -523,6 +523,36 @@ const App = () => {
   const [isSharingProcess, setIsSharingProcess] = useState(false);
 
   const MAX_PHOTOS = 8;
+
+  // ==================================================================================
+  // OPTIMASI PERFORMA MOBILE
+  // ==================================================================================
+  // Foto dari kamera/upload HP bisa sangat besar dan membuat React + html2canvas berat.
+  // Jadi foto disimpan sebagai JPEG yang sudah diperkecil, bukan PNG/base64 ukuran asli.
+  const PHOTO_MAX_SIZE_DESKTOP = 1400;
+  const PHOTO_MAX_SIZE_MOBILE = 1100;
+  const PHOTO_JPEG_QUALITY = 0.86;
+
+  const getOptimizedPhotoMaxSize = () => {
+      if (typeof window === 'undefined') return PHOTO_MAX_SIZE_DESKTOP;
+      return window.innerWidth < 768 ? PHOTO_MAX_SIZE_MOBILE : PHOTO_MAX_SIZE_DESKTOP;
+  };
+
+  const getExportScale = () => {
+      if (typeof window === 'undefined') return 2;
+      // Di HP scale 2 terlalu berat, terutama untuk grid 1200x1800.
+      // Desktop tetap scale 2 agar hasil JPG tajam.
+      if (window.innerWidth < 768) return selectedLayout === 'grid-4r' ? 1 : 1.25;
+      return 2;
+  };
+
+  const getVideoRenderScale = () => {
+      if (typeof window === 'undefined') return 1;
+      // Live Moment di HP jauh lebih ringan kalau render canvas tidak full 1200x1800.
+      if (window.innerWidth < 768) return selectedLayout === 'grid-4r' ? 0.65 : 0.75;
+      return 1;
+  };
+
   const videoRef = useRef(null);
   const characterListRef = useRef(null); 
   const animeListRef = useRef(null); 
@@ -612,7 +642,14 @@ const App = () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: window.innerWidth < 768 ? 960 : 1280 },
+          height: { ideal: window.innerWidth < 768 ? 720 : 960 }
+        },
+        audio: false
+      });
       setStream(mediaStream);
     } catch (err) {
       console.error("Camera Error:", err);
@@ -748,34 +785,76 @@ const App = () => {
     }, 1000);
   };
 
-  const takePhoto = () => {
+  const optimizeImageToDataUrl = (source, options = {}) => {
+      const {
+          mirror = false,
+          filter = 'none',
+          maxSize = getOptimizedPhotoMaxSize(),
+          quality = PHOTO_JPEG_QUALITY
+      } = options;
+
+      return new Promise((resolve) => {
+          try {
+              const sw = source.videoWidth || source.naturalWidth || source.width || 640;
+              const sh = source.videoHeight || source.naturalHeight || source.height || 480;
+              const longestSide = Math.max(sw, sh);
+              const resizeRatio = Math.min(1, maxSize / longestSide);
+              const targetW = Math.max(1, Math.round(sw * resizeRatio));
+              const targetH = Math.max(1, Math.round(sh * resizeRatio));
+
+              const canvas = document.createElement('canvas');
+              canvas.width = targetW;
+              canvas.height = targetH;
+
+              const ctx = canvas.getContext('2d', { alpha: false });
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, targetW, targetH);
+              ctx.save();
+              ctx.filter = filter || 'none';
+
+              if (mirror) {
+                  ctx.translate(targetW, 0);
+                  ctx.scale(-1, 1);
+              }
+
+              ctx.drawImage(source, 0, 0, targetW, targetH);
+              ctx.restore();
+
+              resolve(canvas.toDataURL('image/jpeg', quality));
+          } catch (err) {
+              console.warn('Gagal optimasi foto, memakai cara biasa:', err);
+              try {
+                  const fallbackCanvas = document.createElement('canvas');
+                  fallbackCanvas.width = source.videoWidth || source.naturalWidth || source.width || 640;
+                  fallbackCanvas.height = source.videoHeight || source.naturalHeight || source.height || 480;
+                  const fallbackCtx = fallbackCanvas.getContext('2d');
+                  fallbackCtx.drawImage(source, 0, 0, fallbackCanvas.width, fallbackCanvas.height);
+                  resolve(fallbackCanvas.toDataURL('image/jpeg', 0.82));
+              } catch (fallbackErr) {
+                  resolve(null);
+              }
+          }
+      });
+  };
+
+  const takePhoto = async () => {
     setIsCountingDown(false);
     stopRecording();
     if (useMockCamera) {
-        const mockUrl = `https://placehold.co/640x480/333/FFF.png?text=Photo+${capturedPhotos.length + 1}`;
+        const mockUrl = `https://placehold.co/960x720/333/FFF.jpg?text=Photo+${capturedPhotos.length + 1}`;
         handlePhotoCaptured(mockUrl);
         return;
-    } 
+    }
+
     if (videoRef.current) {
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = videoRef.current.videoWidth || 640;
-        canvas.height = videoRef.current.videoHeight || 480;
-        const ctx = canvas.getContext('2d');
-
-        // Penting:
-        // Filter di preview kamera hanya CSS di elemen <video>.
-        // Jadi saat video digambar ke canvas, filter harus diterapkan lagi di ctx.filter
-        // supaya hasil foto/JPG benar-benar tersimpan dengan filter yang dipilih.
-        ctx.save();
-        ctx.filter = currentFilter.style || 'none';
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
-
-        const imgUrl = canvas.toDataURL('image/png');
-        handlePhotoCaptured(imgUrl);
+        // Preview filter hanya CSS di <video>, jadi filter tetap diterapkan ke canvas.
+        // Bedanya sekarang hasil capture langsung di-resize + JPEG agar web tidak lemot.
+        const imgUrl = await optimizeImageToDataUrl(videoRef.current, {
+            mirror: true,
+            filter: currentFilter.style || 'none'
+        });
+        if (imgUrl) handlePhotoCaptured(imgUrl);
       } catch (e) { console.error("Capture Failed:", e); }
     }
   };
@@ -790,61 +869,66 @@ const App = () => {
 
   const handleUploadClick = () => { fileInputRef.current.click(); };
 
-  const readFileAsDataUrl = (file) => {
-      return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (event) => resolve(event.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-      });
-  };
-
-  const applyFilterToUploadedImage = async (src) => {
-      if (!src) return src;
-
+  const loadImageFromFile = (file) => {
       return new Promise((resolve) => {
+          const objectUrl = URL.createObjectURL(file);
           const img = new Image();
           img.onload = () => {
-              try {
-                  const canvas = document.createElement('canvas');
-                  canvas.width = img.naturalWidth || img.width;
-                  canvas.height = img.naturalHeight || img.height;
-
-                  const ctx = canvas.getContext('2d');
-                  ctx.save();
-                  ctx.filter = currentFilter.style || 'none';
-                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  ctx.restore();
-
-                  resolve(canvas.toDataURL('image/png'));
-              } catch (err) {
-                  console.warn('Gagal menerapkan filter ke foto upload, memakai foto original:', err);
-                  resolve(src);
-              }
+              URL.revokeObjectURL(objectUrl);
+              resolve(img);
           };
-          img.onerror = () => resolve(src);
-          img.src = src;
+          img.onerror = () => {
+              URL.revokeObjectURL(objectUrl);
+              resolve(null);
+          };
+          img.src = objectUrl;
       });
   };
 
-  const handleFileChange = (e) => {
-      const files = Array.from(e.target.files);
+  const optimizeUploadedFile = async (file) => {
+      const img = await loadImageFromFile(file);
+      if (!img) return null;
+
+      // Foto upload juga ikut filter aktif, tapi langsung diperkecil agar tidak membebani HP.
+      return optimizeImageToDataUrl(img, {
+          mirror: false,
+          filter: currentFilter.style || 'none'
+      });
+  };
+
+  const handleFileChange = async (e) => {
+      const files = Array.from(e.target.files || []);
       if (files.length === 0) return;
+
       const remaining = MAX_PHOTOS - capturedPhotos.length;
-      if (remaining <= 0) return;
+      if (remaining <= 0) {
+          e.target.value = '';
+          return;
+      }
+
       const filesToProcess = files.slice(0, remaining);
-      Promise.all(filesToProcess.map(async (file) => {
-          const dataUrl = await readFileAsDataUrl(file);
-          return applyFilterToUploadedImage(dataUrl);
-      })).then(images => {
+      showToast('Sedang memproses foto agar lebih ringan...');
+
+      try {
+          const images = (await Promise.all(filesToProcess.map(optimizeUploadedFile))).filter(Boolean);
+          if (!images.length) {
+              showToast('Foto gagal diproses. Coba pilih foto lain.');
+              e.target.value = '';
+              return;
+          }
+
           const updatedPhotos = [...capturedPhotos, ...images];
           setCapturedPhotos(updatedPhotos);
           setCapturedClips(prev => [...prev, ...new Array(images.length).fill(null)]);
           if (updatedPhotos.length >= MAX_PHOTOS) {
-               setTimeout(() => triggerTransition(() => setCurrentView('result-selection')), 500);
+               setTimeout(() => triggerTransition(() => setCurrentView('result-selection')), 300);
           }
-      });
-      e.target.value = '';
+      } catch (err) {
+          console.error('Upload processing failed:', err);
+          showToast('Gagal memproses foto upload. Coba ulangi lagi.');
+      } finally {
+          e.target.value = '';
+      }
   };
 
   const toggleTimer = () => {
@@ -1135,7 +1219,7 @@ const App = () => {
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
               allowTaint: true,
-              scale: 2,
+              scale: getExportScale(),
               backgroundColor: null,
               logging: false,
               scrollX: 0,
@@ -1174,7 +1258,7 @@ const App = () => {
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
               allowTaint: true,
-              scale: 2, 
+              scale: getExportScale(), 
               backgroundColor: null,
           });
 
@@ -1287,11 +1371,12 @@ const App = () => {
           }));
 
           const recordCanvas = document.createElement('canvas');
-          recordCanvas.width = config.W;
-          recordCanvas.height = config.H;
+          const videoRenderScale = getVideoRenderScale();
+          recordCanvas.width = Math.round(config.W * videoRenderScale);
+          recordCanvas.height = Math.round(config.H * videoRenderScale);
           const ctx = recordCanvas.getContext('2d');
 
-          const outputStream = recordCanvas.captureStream(30);
+          const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 24 : 30);
           const selectedMimeType = getSupportedRecorderMimeType();
           if (!selectedMimeType) {
               showToast('Browser ini belum mendukung format video untuk Live Moment.');
@@ -1342,6 +1427,8 @@ const App = () => {
               if (!isRecording) return;
 
               ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+              ctx.save();
+              ctx.scale(videoRenderScale, videoRenderScale);
               ctx.filter = 'none';
               ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
 
@@ -1410,6 +1497,7 @@ const App = () => {
                   }
               });
 
+              ctx.restore();
               requestAnimationFrame(drawFrame);
           };
 
