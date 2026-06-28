@@ -762,9 +762,18 @@ const App = () => {
         canvas.width = videoRef.current.videoWidth || 640;
         canvas.height = videoRef.current.videoHeight || 480;
         const ctx = canvas.getContext('2d');
+
+        // Penting:
+        // Filter di preview kamera hanya CSS di elemen <video>.
+        // Jadi saat video digambar ke canvas, filter harus diterapkan lagi di ctx.filter
+        // supaya hasil foto/JPG benar-benar tersimpan dengan filter yang dipilih.
+        ctx.save();
+        ctx.filter = currentFilter.style || 'none';
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
         const imgUrl = canvas.toDataURL('image/png');
         handlePhotoCaptured(imgUrl);
       } catch (e) { console.error("Capture Failed:", e); }
@@ -781,19 +790,52 @@ const App = () => {
 
   const handleUploadClick = () => { fileInputRef.current.click(); };
 
+  const readFileAsDataUrl = (file) => {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+      });
+  };
+
+  const applyFilterToUploadedImage = async (src) => {
+      if (!src) return src;
+
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+              try {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = img.naturalWidth || img.width;
+                  canvas.height = img.naturalHeight || img.height;
+
+                  const ctx = canvas.getContext('2d');
+                  ctx.save();
+                  ctx.filter = currentFilter.style || 'none';
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  ctx.restore();
+
+                  resolve(canvas.toDataURL('image/png'));
+              } catch (err) {
+                  console.warn('Gagal menerapkan filter ke foto upload, memakai foto original:', err);
+                  resolve(src);
+              }
+          };
+          img.onerror = () => resolve(src);
+          img.src = src;
+      });
+  };
+
   const handleFileChange = (e) => {
       const files = Array.from(e.target.files);
       if (files.length === 0) return;
       const remaining = MAX_PHOTOS - capturedPhotos.length;
       if (remaining <= 0) return;
       const filesToProcess = files.slice(0, remaining);
-      Promise.all(filesToProcess.map(file => {
-          return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = (event) => resolve(event.target.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-          });
+      Promise.all(filesToProcess.map(async (file) => {
+          const dataUrl = await readFileAsDataUrl(file);
+          return applyFilterToUploadedImage(dataUrl);
       })).then(images => {
           const updatedPhotos = [...capturedPhotos, ...images];
           setCapturedPhotos(updatedPhotos);
@@ -947,6 +989,8 @@ const App = () => {
   const waitForStripAssets = async (element) => {
       if (!element) return;
       const images = Array.from(element.querySelectorAll('img'));
+      const backgroundElements = Array.from(element.querySelectorAll('[data-bg-src]'));
+
       await Promise.all(images.map((img) => {
           if (img.complete && img.naturalWidth > 0) return Promise.resolve();
           if (img.decode) return img.decode().catch(() => {});
@@ -956,6 +1000,10 @@ const App = () => {
               setTimeout(resolve, 1800);
           });
       }));
+
+      // Foto strip sekarang dirender sebagai background-cover supaya rasio tidak gepeng
+      // saat diambil oleh html2canvas. Bagian ini memastikan background image sudah preload.
+      await Promise.all(backgroundElements.map((el) => loadCanvasImage(el.getAttribute('data-bg-src'))));
       await waitForNextPaint();
   };
 
@@ -1078,6 +1126,11 @@ const App = () => {
       }
       setIsDownloadingJPG(true);
       try {
+          await Promise.all([
+              ...selectedStripPhotos.map((photoData) => loadCanvasImage(photoData?.url)),
+              loadCanvasImage(selectedTemplate?.overlayUrl),
+              ...placedStickers.map((sticker) => loadCanvasImage(sticker.url))
+          ]);
           await waitForStripAssets(staticStripRef.current);
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
@@ -1110,6 +1163,13 @@ const App = () => {
       setIsSharingProcess(true);
       
       try {
+          await Promise.all([
+              ...selectedStripPhotos.map((photoData) => loadCanvasImage(photoData?.url)),
+              loadCanvasImage(selectedTemplate?.overlayUrl),
+              ...placedStickers.map((sticker) => loadCanvasImage(sticker.url))
+          ]);
+          await waitForStripAssets(staticStripRef.current);
+
           // Render the high-res canvas first
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
@@ -1299,13 +1359,16 @@ const App = () => {
 
                   ctx.save();
                   clipRoundedSlot(slot);
-                  if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
 
                   if (videos[i] && videos[i].readyState >= 2) {
+                      // Video live masih mentah dari kamera, jadi filter diterapkan di sini.
+                      if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
                       ctx.translate(vx + vw, vy);
                       ctx.scale(-1, 1);
                       drawImageCover(ctx, videos[i], 0, 0, vw, vh);
                   } else if (photoImages[i]) {
+                      // Foto diam dari kamera/upload sudah disimpan dengan filter, jadi jangan difilter dua kali.
+                      ctx.filter = 'none';
                       drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
                   }
                   ctx.restore();
@@ -1391,6 +1454,21 @@ const App = () => {
       }
   };
 
+  const toCssImageUrl = (src) => `url("${String(src || '').replace(/"/g, '\\"')}")`;
+
+  const CoverPhoto = ({ src, className = '', style = {}, alt = 'Photo' }) => (
+      <div
+          role="img"
+          aria-label={alt}
+          data-bg-src={src}
+          className={`bg-center bg-cover bg-no-repeat ${className}`}
+          style={{
+              ...style,
+              backgroundImage: toCssImageUrl(src)
+          }}
+      />
+  );
+
   const AesthoStrip = ({ template, photos, clips, mode, characterData, scale = 1, shadow = true, stripRef, layoutConfig, isEditable = false, showPlacedStickers = true }) => {
     const config = layoutConfig || getLayoutConfig('classic-white');
     const wrapperStyle = { width: `${config.W * scale}px`, height: `${config.H * scale}px`, position: 'relative', flexShrink: 0 };
@@ -1413,10 +1491,34 @@ const App = () => {
                                 {photoData ? (
                                     <>
                                         {clips && clips[photoData.originalIndex] ? (
-                                            <video crossOrigin="anonymous" src={clips[photoData.originalIndex]} autoPlay loop muted playsInline className="w-full h-full object-cover transform scale-x-[-1]" />
-                                        ) : ( <img crossOrigin="anonymous" src={photoData.url} className="w-full h-full object-cover" alt={`Shot ${index}`}/> )}
+                                            <video
+                                                crossOrigin="anonymous"
+                                                src={clips[photoData.originalIndex]}
+                                                autoPlay
+                                                loop
+                                                muted
+                                                playsInline
+                                                className="w-full h-full object-cover transform scale-x-[-1]"
+                                                style={{ filter: currentFilter.style || 'none' }}
+                                            />
+                                        ) : (
+                                            <CoverPhoto
+                                                src={photoData.url}
+                                                className="w-full h-full"
+                                                alt={`Shot ${index}`}
+                                            />
+                                        )}
                                         {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
-                                            <img crossOrigin="anonymous" src={getOverlayImage(characterData, photoData.originalIndex)} className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay" />
+                                            <img
+                                                crossOrigin="anonymous"
+                                                src={getOverlayImage(characterData, photoData.originalIndex)}
+                                                className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`}
+                                                style={{
+                                                    mixBlendMode: 'normal',
+                                                    filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)`
+                                                }}
+                                                alt="Overlay"
+                                            />
                                         )}
                                     </>
                                 ) : ( <div className="w-full h-full bg-white opacity-20"></div> )}
@@ -1682,7 +1784,7 @@ const App = () => {
                     {capturedPhotos.map((photo, i) => (
                         <div key={i} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 shadow-sm relative bg-white flex-shrink-0">
                              <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
-                             <img crossOrigin="anonymous" src={photo} className="w-full h-full object-cover z-0 relative" alt={`Captured ${i}`}/>
+                             <CoverPhoto src={photo} className="w-full h-full z-0 relative" alt={`Captured ${i}`} />
                              {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
                         </div>
                     ))}
@@ -1733,7 +1835,7 @@ const App = () => {
                                   <div key={index} className="bg-zinc-100 relative overflow-hidden group border border-zinc-100" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
                                       {photoData ? (
                                           <>
-                                            <img crossOrigin="anonymous" src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" alt="Selected" />
+                                            <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
                                                 <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
                                             )}
@@ -1749,7 +1851,7 @@ const App = () => {
                                   <div key={index} className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
                                       {photoData ? (
                                           <>
-                                            <img crossOrigin="anonymous" src={photoData.url} className="w-full h-full object-cover transition-all duration-300 group-hover:brightness-50" alt="Selected" />
+                                            <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
                                                 <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
                                             )}
@@ -1769,7 +1871,7 @@ const App = () => {
                               const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
                               return (
                                   <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white border border-zinc-200 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black hover:shadow-lg'}`}>
-                                      <img crossOrigin="anonymous" src={photo} className="w-full h-full object-cover" alt={`Shot ${i}`} />
+                                      <CoverPhoto src={photo} className="w-full h-full" alt={`Shot ${i}`} />
                                       {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
                                       {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
                                       <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
