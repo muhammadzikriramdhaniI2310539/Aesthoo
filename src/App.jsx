@@ -257,7 +257,7 @@ const App = () => {
           },
           { 
               id: 'user-custom-1', 
-              name: 'Citlali Frame (@Shinhlin)', 
+              name: 'Custom User 1', 
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
@@ -268,7 +268,7 @@ const App = () => {
           },
           { 
               id: 'user-custom-2', 
-              name: 'Citlali Frame White Ver (@Shinhlin), 
+              name: 'Custom User 2', 
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
