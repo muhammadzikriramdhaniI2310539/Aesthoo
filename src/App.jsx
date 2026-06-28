@@ -256,8 +256,8 @@ const App = () => {
               photoRadius: 'rounded-xl' 
           },
           { 
-              id: 'user-custom-1', 
-              name: 'Custom User 1', 
+              id: 'citlali-frame-1', 
+              name: 'Citlali Frame (@Shinhlin)', 
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
@@ -267,8 +267,8 @@ const App = () => {
               hideFooter: true
           },
           { 
-              id: 'user-custom-2', 
-              name: 'Custom User 2', 
+              id: 'citlali-frame-white', 
+              name: 'Citlali Frame White Ver (Shinhlin)', 
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
