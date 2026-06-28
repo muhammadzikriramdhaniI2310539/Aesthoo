@@ -423,7 +423,7 @@ const App = () => {
               photoRadius: 'rounded-md',
               sticker: <Ghost className="text-white w-16 h-16" />
           }
-      ].map(t => ({ ...t, layoutId: 'classic-white' })), // Menandai template lama khusus canvas Classic
+      ].map(t => ({ ...t, layoutId: 'classic-white' })), 
       
       // Template khusus untuk Kanvas Baru (1200x1800)
       { 
@@ -456,16 +456,16 @@ const App = () => {
   // ==================================================================================
 
   const defaultStickers = [
-    'https://cdn-icons-png.flaticon.com/512/763/763725.png', // ribbon
-    'https://cdn-icons-png.flaticon.com/512/1077/1077221.png', // paw
-    'https://cdn-icons-png.flaticon.com/512/138/138533.png', // heart
-    'https://cdn-icons-png.flaticon.com/512/1188/1188098.png', // star
-    'https://cdn-icons-png.flaticon.com/512/2850/2850731.png', // moon
-    'https://cdn-icons-png.flaticon.com/512/732/732221.png', // letter
-    'https://cdn-icons-png.flaticon.com/512/2913/2913008.png', // sparkle
-    'https://cdn-icons-png.flaticon.com/512/833/833472.png', // solid heart
-    'https://cdn-icons-png.flaticon.com/512/1164/1164620.png', // glasses
-    'https://cdn-icons-png.flaticon.com/512/1046/1046374.png' // crown
+    'https://cdn-icons-png.flaticon.com/512/763/763725.png', 
+    'https://cdn-icons-png.flaticon.com/512/1077/1077221.png', 
+    'https://cdn-icons-png.flaticon.com/512/138/138533.png', 
+    'https://cdn-icons-png.flaticon.com/512/1188/1188098.png', 
+    'https://cdn-icons-png.flaticon.com/512/2850/2850731.png', 
+    'https://cdn-icons-png.flaticon.com/512/732/732221.png', 
+    'https://cdn-icons-png.flaticon.com/512/2913/2913008.png', 
+    'https://cdn-icons-png.flaticon.com/512/833/833472.png', 
+    'https://cdn-icons-png.flaticon.com/512/1164/1164620.png', 
+    'https://cdn-icons-png.flaticon.com/512/1046/1046374.png' 
   ];
 
   const [currentView, setCurrentView] = useState('home'); 
@@ -491,9 +491,14 @@ const App = () => {
   const [dragState, setDragState] = useState({ isDragging: false, id: null, startX: 0, startY: 0, initX: 0, initY: 0, scale: 1 });
   const stickerUploadRef = useRef(null);
 
-  // Script Loading state
+  // Script Loading & Download state
   const [isDownloadingJPG, setIsDownloadingJPG] = useState(false);
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
+
+  // Notification & Share State
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isSharingProcess, setIsSharingProcess] = useState(false);
 
   const MAX_PHOTOS = 8;
   const videoRef = useRef(null);
@@ -512,7 +517,7 @@ const App = () => {
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
 
-  // Load external scripts (html2canvas only)
+  // Load external scripts (html2canvas)
   useEffect(() => {
     const loadScript = (src, id) => {
         if (!document.getElementById(id)) {
@@ -525,6 +530,11 @@ const App = () => {
     };
     loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas-script');
   }, []);
+
+  const showToast = (message) => {
+      setToastMessage(message);
+      setTimeout(() => setToastMessage(null), 3500);
+  };
 
   const getOverlayImage = (character, photoIndex) => {
     if (!character || !character.overlayImg) return null;
@@ -616,7 +626,6 @@ const App = () => {
   const handleAnimeSelect = (id) => { setSelectedAnime(id); triggerTransition(() => setCurrentView('frame')); };
   const handleFrameConfirm = () => triggerTransition(() => setCurrentView('camera-session'));
   const handleToTemplateSelection = () => {
-      // Memastikan template yang terpilih sesuai dengan Layout Kanvas-nya
       const validTemplates = stripTemplates.filter(t => t.layoutId === selectedLayout);
       if (validTemplates.length > 0 && selectedTemplate.layoutId !== selectedLayout) {
           setSelectedTemplate(validTemplates[0]);
@@ -810,9 +819,9 @@ const App = () => {
       const newSticker = {
           id: Date.now().toString(),
           url,
-          x: config.W / 2 - 100, // Spawn di tengah
+          x: config.W / 2 - 100, 
           y: config.H / 2 - 100,
-          w: 200, // Ukuran dasar stiker relatif ke kanvas asli
+          w: 200, 
           h: 200
       };
       setPlacedStickers([...placedStickers, newSticker]);
@@ -837,7 +846,6 @@ const App = () => {
       if (activeStickerId === id) setActiveStickerId(null);
   };
 
-  // Logic Tarik Geser (Drag)
   const onStickerPointerDown = (e, id, currentX, currentY, scale) => {
       e.preventDefault();
       e.stopPropagation();
@@ -858,12 +866,11 @@ const App = () => {
   const onWorkspacePointerUp = () => {
       if (dragState.isDragging) setDragState(prev => ({ ...prev, isDragging: false }));
   };
-  // --- END STICKER LOGIC ---
 
   // --- EXPORT / DOWNLOAD LOGIC ---
   const downloadStaticJPG = async () => {
       if (!window.html2canvas || !staticStripRef.current) {
-          alert("Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar dan coba lagi.");
+          showToast("Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar.");
           return;
       }
       setIsDownloadingJPG(true);
@@ -871,7 +878,7 @@ const App = () => {
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
               allowTaint: true,
-              scale: 2, // High resolution
+              scale: 2, 
               backgroundColor: null,
           });
           const link = document.createElement('a');
@@ -880,29 +887,89 @@ const App = () => {
           link.click();
       } catch (err) {
           console.error("Failed to generate JPG", err);
-          alert("Gagal memproses gambar JPG. Pastikan koneksi internet Anda stabil.");
+          showToast("Gagal memproses gambar. Pastikan koneksi internet Anda stabil.");
       } finally {
           setIsDownloadingJPG(false);
       }
   };
 
+  // --- SHARE LOGIC ---
+  const handleShareToPlatform = async (platformName) => {
+      if (!window.html2canvas || !staticStripRef.current) {
+          showToast("Sistem sedang menyiapkan gambar, silakan tunggu...");
+          return;
+      }
+      
+      setIsSharingProcess(true);
+      
+      try {
+          // Render the high-res canvas first
+          const canvas = await window.html2canvas(staticStripRef.current, {
+              useCORS: true,
+              allowTaint: true,
+              scale: 2, 
+              backgroundColor: null,
+          });
+
+          // Convert to blob for sharing
+          canvas.toBlob(async (blob) => {
+              if (!blob) {
+                  showToast("Gagal merender gambar.");
+                  setIsSharingProcess(false);
+                  return;
+              }
+
+              const file = new File([blob], 'Aestho-Masterpiece.jpg', { type: 'image/jpeg' });
+              
+              const shareData = {
+                  files: [file],
+                  title: 'My Aestho Photostrip',
+                  text: `Check out my awesome photostrip created with Aestho! 📸✨ #AesthoApp #${platformName}`
+              };
+
+              // Check if browser supports Web Share API with files
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  try {
+                      await navigator.share(shareData);
+                      showToast(`Berhasil membuka menu share untuk ${platformName}!`);
+                      setShowShareModal(false);
+                  } catch (err) {
+                      // AbortError is typical when user cancels the native share dialog
+                      if (err.name !== 'AbortError') {
+                          console.error("Share failed:", err);
+                          showToast(`Gagal membagikan langsung. Silakan unduh gambar untuk dibagikan ke ${platformName}.`);
+                      }
+                  }
+              } else {
+                  // Fallback for browsers that don't support file sharing
+                  showToast(`Browser ini tidak mendukung share langsung. Unduh gambar dan bagikan manual ke ${platformName}.`);
+                  setShowShareModal(false);
+              }
+              setIsSharingProcess(false);
+          }, 'image/jpeg', 0.9);
+
+      } catch (err) {
+          console.error("Failed to prepare share", err);
+          showToast("Terjadi kesalahan saat memproses gambar.");
+          setIsSharingProcess(false);
+      }
+  };
+
   const downloadLiveVideo = async () => {
       if (!window.html2canvas || !baseStripRef.current) {
-          alert("Sistem belum siap, mohon tunggu sebentar.");
+          showToast("Sistem belum siap, mohon tunggu sebentar.");
           return;
       }
       setIsDownloadingVideo(true);
       const config = getLayoutConfig(selectedLayout);
       
       try {
-          // 1. Dapatkan Base Template dari HTML2Canvas
           const baseCanvas = await window.html2canvas(baseStripRef.current, { 
               scale: 1, 
               useCORS: true, 
               backgroundColor: null 
           });
 
-          // 2. Preload semua video clip dalam array
           const videos = await Promise.all(selectedStripPhotos.map(async (photoData) => {
               if(!photoData || !capturedClips[photoData.originalIndex]) return null;
               return new Promise((resolve) => {
@@ -912,13 +979,10 @@ const App = () => {
                   v.loop = true;
                   v.crossOrigin = "anonymous";
                   v.oncanplay = () => resolve(v);
-                  // Paksakan load jika belum trigger event
                   setTimeout(() => resolve(v), 1500); 
               });
           }));
 
-          // 3. Preload Gambar Overlay Karakter (PERBAIKAN ERROR)
-          // Sebelumnya array overlays tidak didefinisikan sehingga menyebabkan error saat drawing
           const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
               if(!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
               
@@ -929,15 +993,11 @@ const App = () => {
                   const img = new Image();
                   img.crossOrigin = "anonymous";
                   img.onload = () => resolve(img);
-                  img.onerror = () => {
-                      console.warn("Failed to load overlay image:", overlayUrl);
-                      resolve(null); // Resolve dengan null agar tidak membatalkan seluruh proses
-                  };
+                  img.onerror = () => { resolve(null); };
                   img.src = overlayUrl;
               });
           }));
 
-          // 3.5 Preload Placed Stickers
           const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
               return new Promise((resolve) => {
                   const img = new Image();
@@ -948,14 +1008,12 @@ const App = () => {
               });
           }));
 
-          // 4. Siapkan Canvas Rekaman
           const recordCanvas = document.createElement('canvas');
           recordCanvas.width = config.W;
           recordCanvas.height = config.H;
           const ctx = recordCanvas.getContext('2d');
           
-          // 5. Setup MediaRecorder
-          const stream = recordCanvas.captureStream(30); // 30 FPS
+          const stream = recordCanvas.captureStream(30); 
           let options = { mimeType: 'video/webm' };
           if (MediaRecorder.isTypeSupported('video/mp4')) {
               options = { mimeType: 'video/mp4' };
@@ -964,7 +1022,6 @@ const App = () => {
           const chunks = [];
           recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-          // Cek Border Radius untuk clipping di Canvas
           let r = 0;
           const rClass = selectedTemplate.photoRadius || '';
           if(rClass.includes('rounded-sm')) r = 2;
@@ -976,19 +1033,15 @@ const App = () => {
           else if(rClass.includes('rounded-[3rem]')) r = 48;
           else if(rClass.includes('rounded-[40px]')) r = 40;
 
-          // Mainkan Video yang sudah di-load
           videos.forEach(v => { if(v) v.play().catch(console.warn); });
 
-          // 6. Loop Rendering Canvas
           let isRecording = true;
           const drawFrame = () => {
               if(!isRecording) return;
               
-              // Gambar Background & Frame Static
               ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
               ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
               
-              // Gambar tiap Slot Foto
               for(let i=0; i<config.slots.length; i++){
                   const photoData = selectedStripPhotos[i];
                   if(!photoData) continue;
@@ -1001,11 +1054,9 @@ const App = () => {
                   const vw = slot.w;
                   const vh = slot.h;
 
-                  // Gambar Video User + Clipping Path Border Radius
                   if(videos[i]) {
                       ctx.save();
                       
-                      // Bikin rounded mask
                       ctx.beginPath();
                       ctx.moveTo(vx + r, vy);
                       ctx.lineTo(vx + vw - r, vy);
@@ -1019,19 +1070,16 @@ const App = () => {
                       ctx.closePath();
                       ctx.clip();
                       
-                      // Filter Color Tones pada video
                       if(currentFilter.style !== 'none') {
                           ctx.filter = currentFilter.style;
                       }
 
-                      // Mirror Video Horizontal
                       ctx.translate(vx + vw, vy);
                       ctx.scale(-1, 1);
                       ctx.drawImage(videos[i], 0, 0, vw, vh);
                       ctx.restore();
                   }
                   
-                  // Gambar Overlay Karakter Anime diatas Video (Sekarang tidak akan error)
                   if(overlays[i]) {
                       ctx.save();
                       if(currentFilter.style !== 'none') {
@@ -1047,9 +1095,7 @@ const App = () => {
                       const ow = vw * pct;
                       const oh = (img.height / img.width) * ow;
                       
-                      // Koordinat X Overlay
                       let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
-                      // Tambahan Offset jika ada di pengaturan data
                       if(selectedCharacterData.cameraStyles && selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex/2)]) {
                          if(wClass.includes('w-[85%]')) ox += (ow * 0.15); 
                       }
@@ -1060,7 +1106,6 @@ const App = () => {
                   }
               }
               
-              // Gambar Stickers diatas semuanya
               stickersImages.forEach(stk => {
                   if (stk && stk.img) {
                       ctx.drawImage(stk.img, stk.x, stk.y, stk.w, stk.h);
@@ -1070,10 +1115,8 @@ const App = () => {
               requestAnimationFrame(drawFrame);
           };
 
-          // 7. Pengaturan Stop Record -> Download
           recorder.onstop = () => {
               isRecording = false;
-              // Berhentikan semua video background memory
               videos.forEach(v => { if(v) { v.pause(); v.src = ""; }});
               
               const ext = options.mimeType === 'video/mp4' ? 'mp4' : 'webm';
@@ -1088,9 +1131,8 @@ const App = () => {
           };
 
           recorder.start();
-          drawFrame(); // Mulai loop frame
+          drawFrame(); 
           
-          // Rekam selama 3.5 detik 
           setTimeout(() => {
               if (recorder.state === 'recording') {
                  recorder.stop();
@@ -1099,7 +1141,7 @@ const App = () => {
 
       } catch (err) {
           console.error("Failed to generate Video", err);
-          alert("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
+          showToast("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
           setIsDownloadingVideo(false);
       }
   };
@@ -1116,7 +1158,6 @@ const App = () => {
                 <div style={stripContentStyle}>
                     {template.sticker && <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">{template.sticker}</div>}
                     
-                    {/* Render Foto menggunakan Absolute Positioning */}
                     {photos.map((photoData, index) => {
                         const slot = config.slots[index];
                         if (!slot) return null;
@@ -1144,7 +1185,6 @@ const App = () => {
                         </div>
                     )}
 
-                    {/* FRAME OVERLAY DARI DRIVE: di atas foto, tapi di bawah stiker */}
                     {template.overlayUrl && (
                         <div
                             className="absolute inset-0 z-30 pointer-events-none"
@@ -1156,7 +1196,6 @@ const App = () => {
                         />
                     )}
 
-                    {/* RENDER PLACED STICKERS: z-index lebih tinggi dari frame */}
                     {showPlacedStickers && placedStickers.map(stk => (
                         <div
                             key={stk.id}
@@ -1605,17 +1644,23 @@ const App = () => {
       {/* --- VIEW 9: FINAL RESULT --- */}
       {currentView === 'final-result' && (
         <main className="relative z-30 flex flex-col h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-             <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200 pl-24 md:pl-48">
+             <div className="w-full p-4 md:p-6 flex justify-between items-center border-b border-zinc-200 pl-24 md:pl-48 bg-white z-10 shadow-sm relative">
                   <div className="flex gap-4 items-center">
                     <span className="font-title text-2xl md:text-3xl hidden md:block">Aestho.</span>
                     <span className="font-modern text-[10px] tracking-widest text-zinc-400">FINAL RESULT</span>
                   </div>
-                  <div className="flex gap-2 md:gap-4">
-                      <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black font-modern text-[10px]">BACK</button>
-                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all">
+                  <div className="flex gap-2 md:gap-4 flex-wrap justify-end">
+                      <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2">BACK</button>
+                      
+                      {/* Tombol Share Baru */}
+                      <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-[10px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                          <Share size={12} className="hidden md:block"/> SHARE
+                      </button>
+
+                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                           {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
                       </button>
-                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all">
+                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                           {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
                       </button>
                   </div>
@@ -1631,7 +1676,7 @@ const App = () => {
                   <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
               </div>
 
-              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8">
+              <div className="flex-1 flex flex-col md:flex-row w-full h-full justify-start md:justify-center items-center gap-8 md:gap-16 p-8 overflow-y-auto bg-gray-50 pb-32 md:pb-8 relative z-0">
                   <div className="flex flex-col items-center gap-4 shrink-0">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
                       <div className="transform scale-[0.85] md:scale-100 origin-top">
@@ -1646,6 +1691,64 @@ const App = () => {
                   </div>
               </div>
         </main>
+      )}
+
+      {/* --- SHARE MODAL --- */}
+      {showShareModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 backdrop-blur-md transition-opacity">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-zinc-100 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-6 relative text-center">
+                      <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-black bg-zinc-50 hover:bg-zinc-100 p-2 rounded-full transition-colors">
+                          <X size={16} />
+                      </button>
+                      <h2 className="font-title text-3xl text-black mb-1">Share Masterpiece</h2>
+                      <p className="font-modern text-[10px] text-zinc-500 uppercase tracking-widest mb-8">Pilih platform tujuan</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                          {/* Instagram */}
+                          <button onClick={() => handleShareToPlatform('Instagram')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                              )}
+                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Instagram</span>
+                          </button>
+
+                          {/* X (Twitter) */}
+                          <button onClick={() => handleShareToPlatform('X (Twitter)')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-black text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"></path><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path></svg>
+                              )}
+                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">X (Twitter)</span>
+                          </button>
+
+                          {/* Facebook */}
+                          <button onClick={() => handleShareToPlatform('Facebook')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-blue-600 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                              )}
+                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Facebook</span>
+                          </button>
+
+                          {/* WhatsApp */}
+                          <button onClick={() => handleShareToPlatform('WhatsApp')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-green-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                               {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                               )}
+                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">WhatsApp</span>
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* --- GLOBAL TOAST NOTIFICATION --- */}
+      {toastMessage && (
+          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 fade-in duration-300">
+              <div className="bg-zinc-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 font-sans text-xs border border-zinc-700 max-w-sm text-center md:max-w-md">
+                  <span className="flex-1 leading-relaxed">{toastMessage}</span>
+              </div>
+          </div>
       )}
 
     </div>
