@@ -256,6 +256,28 @@ const App = () => {
               photoRadius: 'rounded-xl' 
           },
           { 
+              id: 'user-custom-1', 
+              name: 'Citlali Frame (@Shinhlin)', 
+              type: 'css', 
+              bgColor: '#ffffff', 
+              textColor: 'black',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/14UukRXCZnWbHQSQk2FRTPu_ta8rs3pkn',
+              styleContainer: { backgroundColor: 'white' },
+              photoRadius: 'rounded-none',
+              hideFooter: true
+          },
+          { 
+              id: 'user-custom-2', 
+              name: 'Citlali Frame White Ver (@Shinhlin), 
+              type: 'css', 
+              bgColor: '#ffffff', 
+              textColor: 'black',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/1cFCq0iPjCMFNnlYic9oIM3y_LwPLIV5Y',
+              styleContainer: { backgroundColor: 'white' },
+              photoRadius: 'rounded-none',
+              hideFooter: true
+          },
+          { 
               id: 'aestho-fun', 
               name: 'Aestho Fun', 
               type: 'css', 
