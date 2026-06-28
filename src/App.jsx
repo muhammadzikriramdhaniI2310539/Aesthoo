@@ -918,26 +918,161 @@ const App = () => {
   };
 
   // --- EXPORT / DOWNLOAD LOGIC ---
+  const waitForNextPaint = () => new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+
+  const waitForStripAssets = async (element) => {
+      if (!element) return;
+      const images = Array.from(element.querySelectorAll('img'));
+      await Promise.all(images.map((img) => {
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          if (img.decode) return img.decode().catch(() => {});
+          return new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+              setTimeout(resolve, 1800);
+          });
+      }));
+      await waitForNextPaint();
+  };
+
+  const canvasToBlob = (canvas, type = 'image/jpeg', quality = 0.92) => {
+      return new Promise((resolve, reject) => {
+          if (canvas.toBlob) {
+              canvas.toBlob((blob) => {
+                  if (blob) resolve(blob);
+                  else reject(new Error('Canvas blob kosong'));
+              }, type, quality);
+              return;
+          }
+
+          try {
+              const dataUrl = canvas.toDataURL(type, quality);
+              fetch(dataUrl).then((res) => res.blob()).then(resolve).catch(reject);
+          } catch (err) {
+              reject(err);
+          }
+      });
+  };
+
+  const isIOSDevice = () => {
+      if (typeof navigator === 'undefined') return false;
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  const saveBlobToDevice = async (blob, filename, shareText = 'Aestho photobooth result') => {
+      const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      const shouldUseNativeShare = isIOSDevice() || window.innerWidth < 768;
+
+      // Di beberapa browser HP, terutama iPhone/Safari, atribut download pada tag <a>
+      // sering diabaikan. Native Share lebih stabil karena user bisa pilih Save to Files/Photos.
+      if (shouldUseNativeShare && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+              await navigator.share({
+                  files: [file],
+                  title: filename,
+                  text: shareText
+              });
+              showToast('Menu simpan/share berhasil dibuka. Pilih Save atau aplikasi tujuan.');
+              return true;
+          } catch (err) {
+              if (err.name === 'AbortError') {
+                  showToast('Proses download dibatalkan.');
+                  return false;
+              }
+              console.warn('Native share gagal, mencoba download biasa:', err);
+          }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.rel = 'noopener';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+      }, 2500);
+
+      showToast('File sedang didownload. Cek folder Downloads di HP kamu.');
+      return true;
+  };
+
+  const loadCanvasImage = (src) => {
+      if (!src) return Promise.resolve(null);
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+      });
+  };
+
+  const drawImageCover = (ctx, source, x, y, w, h) => {
+      const sw = source.videoWidth || source.naturalWidth || source.width;
+      const sh = source.videoHeight || source.naturalHeight || source.height;
+      if (!sw || !sh) return;
+
+      const sourceRatio = sw / sh;
+      const targetRatio = w / h;
+      let sx = 0;
+      let sy = 0;
+      let sWidth = sw;
+      let sHeight = sh;
+
+      if (sourceRatio > targetRatio) {
+          sWidth = sh * targetRatio;
+          sx = (sw - sWidth) / 2;
+      } else {
+          sHeight = sw / targetRatio;
+          sy = (sh - sHeight) / 2;
+      }
+
+      ctx.drawImage(source, sx, sy, sWidth, sHeight, x, y, w, h);
+  };
+
+  const getSupportedRecorderMimeType = () => {
+      if (!window.MediaRecorder) return '';
+      const mimeTypes = [
+          'video/mp4;codecs=h264',
+          'video/mp4',
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm'
+      ];
+      return mimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+  };
+
   const downloadStaticJPG = async () => {
       if (!window.html2canvas || !staticStripRef.current) {
-          showToast("Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar.");
+          showToast('Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar.');
           return;
       }
       setIsDownloadingJPG(true);
       try {
+          await waitForStripAssets(staticStripRef.current);
           const canvas = await window.html2canvas(staticStripRef.current, {
               useCORS: true,
               allowTaint: true,
-              scale: 2, 
+              scale: 2,
               backgroundColor: null,
+              logging: false,
+              scrollX: 0,
+              scrollY: 0,
+              windowWidth: staticStripRef.current.scrollWidth,
+              windowHeight: staticStripRef.current.scrollHeight
           });
-          const link = document.createElement('a');
-          link.download = 'Aestho-Strip.jpg';
-          link.href = canvas.toDataURL('image/jpeg', 0.9);
-          link.click();
+          const blob = await canvasToBlob(canvas, 'image/jpeg', 0.92);
+          await saveBlobToDevice(blob, 'Aestho-Strip.jpg', 'My Aestho photostrip 📸');
       } catch (err) {
-          console.error("Failed to generate JPG", err);
-          showToast("Gagal memproses gambar. Pastikan koneksi internet Anda stabil.");
+          console.error('Failed to generate JPG', err);
+          showToast('Gagal memproses JPG. Coba tunggu semua gambar tampil dulu lalu tekan lagi.');
       } finally {
           setIsDownloadingJPG(false);
       }
@@ -1007,203 +1142,229 @@ const App = () => {
 
   const downloadLiveVideo = async () => {
       if (!window.html2canvas || !baseStripRef.current) {
-          showToast("Sistem belum siap, mohon tunggu sebentar.");
+          showToast('Sistem belum siap, mohon tunggu sebentar.');
           return;
       }
       setIsDownloadingVideo(true);
       const config = getLayoutConfig(selectedLayout);
-      
+
       try {
-          const baseCanvas = await window.html2canvas(baseStripRef.current, { 
-              scale: 1, 
-              useCORS: true, 
-              backgroundColor: null 
+          if (!HTMLCanvasElement.prototype.captureStream || !window.MediaRecorder) {
+              showToast('Browser HP ini belum mendukung export Live Moment. Coba pakai Chrome Android atau Safari terbaru.');
+              setIsDownloadingVideo(false);
+              return;
+          }
+
+          await waitForStripAssets(baseStripRef.current);
+          const baseCanvas = await window.html2canvas(baseStripRef.current, {
+              scale: 1,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: null,
+              logging: false,
+              scrollX: 0,
+              scrollY: 0,
+              windowWidth: baseStripRef.current.scrollWidth,
+              windowHeight: baseStripRef.current.scrollHeight
           });
 
+          const photoImages = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+              if (!photoData?.url) return null;
+              return loadCanvasImage(photoData.url);
+          }));
+
           const videos = await Promise.all(selectedStripPhotos.map(async (photoData) => {
-              if(!photoData || !capturedClips[photoData.originalIndex]) return null;
+              if (!photoData || !capturedClips[photoData.originalIndex]) return null;
               return new Promise((resolve) => {
                   const v = document.createElement('video');
                   v.src = capturedClips[photoData.originalIndex];
                   v.muted = true;
                   v.loop = true;
-                  v.crossOrigin = "anonymous";
-                  v.oncanplay = () => resolve(v);
-                  setTimeout(() => resolve(v), 1500); 
+                  v.playsInline = true;
+                  v.preload = 'auto';
+                  v.crossOrigin = 'anonymous';
+
+                  const finish = () => resolve(v);
+                  v.onloadeddata = finish;
+                  v.oncanplay = finish;
+                  v.onerror = () => resolve(null);
+                  setTimeout(() => resolve(v.readyState >= 2 ? v : null), 2200);
+                  v.load();
               });
           }));
 
           const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
-              if(!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
-              
+              if (!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
               const overlayUrl = getOverlayImage(selectedCharacterData, photoData.originalIndex);
-              if(!overlayUrl) return null;
-
-              return new Promise((resolve) => {
-                  const img = new Image();
-                  img.crossOrigin = "anonymous";
-                  img.onload = () => resolve(img);
-                  img.onerror = () => { resolve(null); };
-                  img.src = overlayUrl;
-              });
+              return loadCanvasImage(overlayUrl);
           }));
 
           const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
-              return new Promise((resolve) => {
-                  const img = new Image();
-                  img.crossOrigin = "anonymous";
-                  img.onload = () => resolve({ img, ...stk });
-                  img.onerror = () => resolve(null);
-                  img.src = stk.url;
-              });
+              const img = await loadCanvasImage(stk.url);
+              return img ? { img, ...stk } : null;
           }));
 
           const recordCanvas = document.createElement('canvas');
           recordCanvas.width = config.W;
           recordCanvas.height = config.H;
           const ctx = recordCanvas.getContext('2d');
-          
-          const stream = recordCanvas.captureStream(30); 
-          let options = { mimeType: 'video/webm' };
-          if (MediaRecorder.isTypeSupported('video/mp4')) {
-              options = { mimeType: 'video/mp4' };
+
+          const outputStream = recordCanvas.captureStream(30);
+          const selectedMimeType = getSupportedRecorderMimeType();
+          if (!selectedMimeType) {
+              showToast('Browser ini belum mendukung format video untuk Live Moment.');
+              setIsDownloadingVideo(false);
+              return;
           }
-          const recorder = new MediaRecorder(stream, options); 
+
+          const options = { mimeType: selectedMimeType };
+          const recorder = new MediaRecorder(outputStream, options);
           const chunks = [];
-          recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+          recorder.ondataavailable = (e) => {
+              if (e.data && e.data.size > 0) chunks.push(e.data);
+          };
 
           let r = 0;
           const rClass = selectedTemplate.photoRadius || '';
-          if(rClass.includes('rounded-sm')) r = 2;
-          else if(rClass.includes('rounded-md')) r = 6;
-          else if(rClass.includes('rounded-lg')) r = 8;
-          else if(rClass.includes('rounded-xl')) r = 12;
-          else if(rClass.includes('rounded-2xl')) r = 16;
-          else if(rClass.includes('rounded-3xl')) r = 24;
-          else if(rClass.includes('rounded-[3rem]')) r = 48;
-          else if(rClass.includes('rounded-[40px]')) r = 40;
+          if (rClass.includes('rounded-sm')) r = 2;
+          else if (rClass.includes('rounded-md')) r = 6;
+          else if (rClass.includes('rounded-lg')) r = 8;
+          else if (rClass.includes('rounded-xl')) r = 12;
+          else if (rClass.includes('rounded-2xl')) r = 16;
+          else if (rClass.includes('rounded-3xl')) r = 24;
+          else if (rClass.includes('rounded-[3rem]')) r = 48;
+          else if (rClass.includes('rounded-[40px]')) r = 40;
 
-          videos.forEach(v => { if(v) v.play().catch(console.warn); });
+          const clipRoundedSlot = (slot) => {
+              ctx.beginPath();
+              ctx.moveTo(slot.x + r, slot.y);
+              ctx.lineTo(slot.x + slot.w - r, slot.y);
+              ctx.quadraticCurveTo(slot.x + slot.w, slot.y, slot.x + slot.w, slot.y + r);
+              ctx.lineTo(slot.x + slot.w, slot.y + slot.h - r);
+              ctx.quadraticCurveTo(slot.x + slot.w, slot.y + slot.h, slot.x + slot.w - r, slot.y + slot.h);
+              ctx.lineTo(slot.x + r, slot.y + slot.h);
+              ctx.quadraticCurveTo(slot.x, slot.y + slot.h, slot.x, slot.y + slot.h - r);
+              ctx.lineTo(slot.x, slot.y + r);
+              ctx.quadraticCurveTo(slot.x, slot.y, slot.x + r, slot.y);
+              ctx.closePath();
+              ctx.clip();
+          };
+
+          await Promise.all(videos.map((v) => {
+              if (!v) return Promise.resolve();
+              return v.play().catch(() => {});
+          }));
 
           let isRecording = true;
           const drawFrame = () => {
-              if(!isRecording) return;
-              
+              if (!isRecording) return;
+
               ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+              ctx.filter = 'none';
               ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
-              
-              for(let i=0; i<config.slots.length; i++){
+
+              for (let i = 0; i < config.slots.length; i++) {
                   const photoData = selectedStripPhotos[i];
-                  if(!photoData) continue;
-                  
+                  if (!photoData) continue;
+
                   const slot = config.slots[i];
-                  if(!slot) continue;
+                  if (!slot) continue;
 
                   const vx = slot.x;
                   const vy = slot.y;
                   const vw = slot.w;
                   const vh = slot.h;
 
-                  if(videos[i]) {
-                      ctx.save();
-                      
-                      ctx.beginPath();
-                      ctx.moveTo(vx + r, vy);
-                      ctx.lineTo(vx + vw - r, vy);
-                      ctx.quadraticCurveTo(vx + vw, vy, vx + vw, vy + r);
-                      ctx.lineTo(vx + vw, vy + vh - r);
-                      ctx.quadraticCurveTo(vx + vw, vy + vh, vx + vw - r, vy + vh);
-                      ctx.lineTo(vx + r, vy + vh);
-                      ctx.quadraticCurveTo(vx, vy + vh, vx, vy + vh - r);
-                      ctx.lineTo(vx, vy + r);
-                      ctx.quadraticCurveTo(vx, vy, vx + r, vy);
-                      ctx.closePath();
-                      ctx.clip();
-                      
-                      if(currentFilter.style !== 'none') {
-                          ctx.filter = currentFilter.style;
-                      }
+                  ctx.save();
+                  clipRoundedSlot(slot);
+                  if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
 
+                  if (videos[i] && videos[i].readyState >= 2) {
                       ctx.translate(vx + vw, vy);
                       ctx.scale(-1, 1);
-                      ctx.drawImage(videos[i], 0, 0, vw, vh);
-                      ctx.restore();
+                      drawImageCover(ctx, videos[i], 0, 0, vw, vh);
+                  } else if (photoImages[i]) {
+                      drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
                   }
-                  
-                  if(overlays[i]) {
+                  ctx.restore();
+
+                  if (overlays[i]) {
                       ctx.save();
-                      if(currentFilter.style !== 'none') {
-                          ctx.filter = `${currentFilter.style} brightness(1.1)`;
-                      }
+                      if (currentFilter.style !== 'none') ctx.filter = `${currentFilter.style} brightness(1.1)`;
 
                       const img = overlays[i];
                       const wClass = getOverlayWidth(selectedCharacterData, photoData.originalIndex);
                       let pct = 0.6;
-                      if(wClass.includes('w-[50%]')) pct = 0.5;
-                      if(wClass.includes('w-[85%]')) pct = 0.85;
-                      
+                      if (wClass.includes('w-[50%]')) pct = 0.5;
+                      if (wClass.includes('w-[85%]')) pct = 0.85;
+                      if (wClass.includes('w-[95%]')) pct = 0.95;
+
                       const ow = vw * pct;
                       const oh = (img.height / img.width) * ow;
-                      
                       let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
-                      if(selectedCharacterData.cameraStyles && selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex/2)]) {
-                         if(wClass.includes('w-[85%]')) ox += (ow * 0.15); 
+                      if (selectedCharacterData.cameraStyles && selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex / 2)]) {
+                          if (wClass.includes('w-[85%]')) ox += (ow * 0.15);
                       }
                       const oy = vy + vh - oh;
-                      
+
                       ctx.drawImage(img, ox, oy, ow, oh);
                       ctx.restore();
                   }
               }
-              
-              // Gambar Stickers diatas semuanya
-              stickersImages.forEach(stk => {
+
+              stickersImages.forEach((stk) => {
                   if (stk && stk.img) {
                       ctx.save();
-                      // Pindahkan context ke titik tengah stiker untuk di scale & rotasi dengan akurat
                       const cx = stk.x + stk.w / 2;
                       const cy = stk.y + stk.h / 2;
                       ctx.translate(cx, cy);
                       ctx.rotate((stk.rotation || 0) * Math.PI / 180);
                       ctx.scale(stk.scale || 1, stk.scale || 1);
-                      // Gambar di titik pusat
                       ctx.drawImage(stk.img, -stk.w / 2, -stk.h / 2, stk.w, stk.h);
                       ctx.restore();
                   }
               });
-              
+
               requestAnimationFrame(drawFrame);
           };
 
-          // 7. Pengaturan Stop Record -> Download
-          recorder.onstop = () => {
-              isRecording = false;
-              // Berhentikan semua video background memory
-              videos.forEach(v => { if(v) { v.pause(); v.src = ""; }});
-              
-              const ext = options.mimeType === 'video/mp4' ? 'mp4' : 'webm';
-              const blob = new Blob(chunks, { type: options.mimeType });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `Aestho-Live-Strip.${ext}`; 
-              a.click();
-              
-              setIsDownloadingVideo(false);
+          recorder.onstop = async () => {
+              try {
+                  isRecording = false;
+                  videos.forEach((v) => {
+                      if (v) {
+                          v.pause();
+                          v.removeAttribute('src');
+                          v.load();
+                      }
+                  });
+
+                  if (!chunks.length) {
+                      showToast('Video gagal dibuat. Coba ulangi sekali lagi setelah Live Moment tampil.');
+                      return;
+                  }
+
+                  const mimeType = recorder.mimeType || selectedMimeType;
+                  const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                  const blob = new Blob(chunks, { type: mimeType });
+                  await saveBlobToDevice(blob, `Aestho-Live-Strip.${ext}`, 'My Aestho Live Moment 🎞️');
+              } catch (err) {
+                  console.error('Failed to save video', err);
+                  showToast('Video berhasil dibuat, tapi gagal disimpan otomatis. Coba tekan VIDEO lagi.');
+              } finally {
+                  setIsDownloadingVideo(false);
+              }
           };
 
-          recorder.start();
-          drawFrame(); 
-          
-          setTimeout(() => {
-              if (recorder.state === 'recording') {
-                 recorder.stop();
-              }
-          }, 3500);
+          recorder.start(150);
+          drawFrame();
 
+          setTimeout(() => {
+              if (recorder.state === 'recording') recorder.stop();
+          }, 3500);
       } catch (err) {
-          console.error("Failed to generate Video", err);
-          showToast("Gagal memproses Video. Pastikan resource dimuat dengan benar.");
+          console.error('Failed to generate Video', err);
+          showToast('Gagal memproses Video. Coba pakai Chrome Android/Safari terbaru dan ulangi lagi.');
           setIsDownloadingVideo(false);
       }
   };
@@ -1716,24 +1877,24 @@ const App = () => {
 
       {/* --- VIEW 9: FINAL RESULT --- */}
       {currentView === 'final-result' && (
-        <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-y-auto md:overflow-hidden">
-             <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 pl-20 md:pl-48 bg-white z-10 shadow-sm sticky top-0 md:relative md:top-auto">
+        <main className="relative z-30 flex flex-col h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
+             <div className="w-full p-3 md:p-6 flex justify-between items-center gap-2 md:gap-3 border-b border-zinc-200 pl-16 md:pl-48 bg-white z-20 shadow-sm shrink-0">
                   <div className="flex gap-4 items-center">
                     <span className="font-title text-2xl md:text-3xl hidden md:block">Aestho.</span>
                     <span className="font-modern text-[10px] tracking-widest text-zinc-400">FINAL RESULT</span>
                   </div>
-                  <div className="flex gap-2 md:gap-4 flex-wrap justify-end">
+                  <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
                       <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2">BACK</button>
                       
                       {/* Tombol Share Baru */}
-                      <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-[10px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                      <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-[9px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
                           <Share size={12} className="hidden md:block"/> SHARE
                       </button>
 
-                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                           {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
                       </button>
-                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                           {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
                       </button>
                   </div>
@@ -1749,17 +1910,17 @@ const App = () => {
                   <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
               </div>
 
-              <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full justify-start md:justify-center items-center gap-6 md:gap-16 p-4 md:p-8 overflow-y-auto bg-gray-50 pb-28 md:pb-8 relative z-0">
-                  <div className="flex flex-col items-center gap-4 shrink-0">
+              <div className="flex-1 min-h-0 flex flex-col md:flex-row w-full justify-start md:justify-center items-center gap-8 md:gap-16 px-4 pt-5 md:p-8 overflow-y-auto overflow-x-hidden bg-gray-50 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 relative z-0">
+                  <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
                       <div className="transform scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.22 : 0.22) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
                       </div>
                   </div>
-                  <div className="flex flex-col items-center gap-4 shrink-0">
+                  <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
                       <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
                       <div className="transform scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.22 : 0.22) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
                       </div>
                   </div>
               </div>
