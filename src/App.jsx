@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -819,10 +819,12 @@ const App = () => {
       const newSticker = {
           id: Date.now().toString(),
           url,
-          x: config.W / 2 - 100, 
+          x: config.W / 2 - 100, // Spawn di tengah
           y: config.H / 2 - 100,
-          w: 200, 
-          h: 200
+          w: 200, // Ukuran dasar stiker relatif ke kanvas asli
+          h: 200,
+          rotation: 0,
+          scale: 1
       };
       setPlacedStickers([...placedStickers, newSticker]);
       setActiveStickerId(newSticker.id);
@@ -846,6 +848,43 @@ const App = () => {
       if (activeStickerId === id) setActiveStickerId(null);
   };
 
+  const updateActiveSticker = (updates) => {
+      if (!activeStickerId) return;
+      setPlacedStickers(prev => prev.map(s =>
+          s.id === activeStickerId ? { ...s, ...updates } : s
+      ));
+  };
+
+  const handleRotateSticker = (dir) => {
+      const stk = placedStickers.find(s => s.id === activeStickerId);
+      if(stk) {
+          updateActiveSticker({ rotation: (stk.rotation || 0) + (dir === 'right' ? 15 : -15) });
+      }
+  };
+
+  const handleScaleSticker = (dir) => {
+       const stk = placedStickers.find(s => s.id === activeStickerId);
+       if(stk) {
+           const newScale = dir === 'up' ? (stk.scale || 1) + 0.15 : Math.max(0.2, (stk.scale || 1) - 0.15);
+           updateActiveSticker({ scale: newScale });
+       }
+  };
+
+  const handleDuplicateSticker = () => {
+       const stk = placedStickers.find(s => s.id === activeStickerId);
+       if(stk) {
+           const newSticker = {
+               ...stk,
+               id: Date.now().toString(),
+               x: stk.x + 40, // Sedikit digeser agar terlihat ada duplikat
+               y: stk.y + 40
+           };
+           setPlacedStickers([...placedStickers, newSticker]);
+           setActiveStickerId(newSticker.id);
+       }
+  };
+
+  // Logic Tarik Geser (Drag)
   const onStickerPointerDown = (e, id, currentX, currentY, scale) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1106,17 +1145,29 @@ const App = () => {
                   }
               }
               
+              // Gambar Stickers diatas semuanya
               stickersImages.forEach(stk => {
                   if (stk && stk.img) {
-                      ctx.drawImage(stk.img, stk.x, stk.y, stk.w, stk.h);
+                      ctx.save();
+                      // Pindahkan context ke titik tengah stiker untuk di scale & rotasi dengan akurat
+                      const cx = stk.x + stk.w / 2;
+                      const cy = stk.y + stk.h / 2;
+                      ctx.translate(cx, cy);
+                      ctx.rotate((stk.rotation || 0) * Math.PI / 180);
+                      ctx.scale(stk.scale || 1, stk.scale || 1);
+                      // Gambar di titik pusat
+                      ctx.drawImage(stk.img, -stk.w / 2, -stk.h / 2, stk.w, stk.h);
+                      ctx.restore();
                   }
               });
               
               requestAnimationFrame(drawFrame);
           };
 
+          // 7. Pengaturan Stop Record -> Download
           recorder.onstop = () => {
               isRecording = false;
+              // Berhentikan semua video background memory
               videos.forEach(v => { if(v) { v.pause(); v.src = ""; }});
               
               const ext = options.mimeType === 'video/mp4' ? 'mp4' : 'webm';
@@ -1196,6 +1247,7 @@ const App = () => {
                         />
                     )}
 
+                    {/* RENDER PLACED STICKERS: z-index lebih tinggi dari frame */}
                     {showPlacedStickers && placedStickers.map(stk => (
                         <div
                             key={stk.id}
@@ -1208,7 +1260,9 @@ const App = () => {
                                 cursor: isEditable ? (activeStickerId === stk.id ? 'grabbing' : 'grab') : 'default',
                                 zIndex: 50,
                                 border: isEditable && activeStickerId === stk.id ? '2px dashed rgba(0,0,0,0.5)' : 'none',
-                                boxShadow: isEditable && activeStickerId === stk.id ? '0 0 0 2px white' : 'none'
+                                boxShadow: isEditable && activeStickerId === stk.id ? '0 0 0 2px white' : 'none',
+                                transform: `rotate(${stk.rotation || 0}deg) scale(${stk.scale || 1})`,
+                                transformOrigin: 'center'
                             }}
                             onPointerDown={(e) => isEditable && onStickerPointerDown(e, stk.id, stk.x, stk.y, scale)}
                         >
@@ -1223,19 +1277,6 @@ const App = () => {
                                 }}
                                 alt="sticker"
                             />
-
-                            {isEditable && activeStickerId === stk.id && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeSticker(stk.id);
-                                    }}
-                                    className="absolute -top-6 -right-6 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 shadow-xl cursor-pointer"
-                                    style={{ pointerEvents: 'auto' }}
-                                >
-                                    <X size={18} />
-                                </button>
-                            )}
                         </div>
                     ))}
                 </div>
@@ -1604,7 +1645,28 @@ const App = () => {
                              isEditable={true} 
                           />
                       </div>
-                      <span className="absolute bottom-6 left-1/2 transform -translate-x-1/2 font-modern text-[10px] text-zinc-500 bg-white/90 px-6 py-2 rounded-full shadow-sm backdrop-blur-md pointer-events-none border border-zinc-200 uppercase tracking-widest hidden md:block">Click & Drag Stickers to Move</span>
+                      
+                      {!activeStickerId && (
+                          <span className="absolute bottom-6 left-1/2 transform -translate-x-1/2 font-modern text-[10px] text-zinc-500 bg-white/90 px-6 py-2 rounded-full shadow-sm backdrop-blur-md pointer-events-none border border-zinc-200 uppercase tracking-widest hidden md:block">Click & Drag Stickers to Move</span>
+                      )}
+
+                      {/* Toolbar Kontrol Stiker Aktual */}
+                      {activeStickerId && (
+                          <div className="absolute bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-md px-4 py-2 md:px-6 md:py-3 rounded-full shadow-2xl border border-zinc-200 flex items-center gap-2 md:gap-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => handleScaleSticker('down')} className="p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Perkecil"><ZoomOut size={18}/></button>
+                              <button onClick={() => handleScaleSticker('up')} className="p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Perbesar"><ZoomIn size={18}/></button>
+                              
+                              <div className="w-px h-6 bg-zinc-300 mx-1"></div>
+                              
+                              <button onClick={() => handleRotateSticker('left')} className="p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Putar Kiri"><RotateCcw size={18}/></button>
+                              <button onClick={() => handleRotateSticker('right')} className="p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Putar Kanan"><RotateCw size={18}/></button>
+                              
+                              <div className="w-px h-6 bg-zinc-300 mx-1"></div>
+                              
+                              <button onClick={handleDuplicateSticker} className="p-2 text-zinc-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Duplikat"><Copy size={18}/></button>
+                              <button onClick={() => removeSticker(activeStickerId)} className="p-2 text-zinc-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Hapus"><Trash2 size={18}/></button>
+                          </div>
+                      )}
                   </div>
                   
                   {/* Kanan: Sidebar Sticker Palette */}
