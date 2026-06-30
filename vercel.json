@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/id/summary/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
