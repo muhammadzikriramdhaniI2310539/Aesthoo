@@ -1,7 +1,171 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
+const generateResultId = () => {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = new Uint8Array(8);
+
+  window.crypto.getRandomValues(bytes);
+
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+};
+
+const getSummaryIdFromPath = () => {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+
+  if (parts[0] === 'id' && parts[1] === 'summary' && parts[2]) {
+    return parts[2];
+  }
+
+  return null;
+};
+
+const toCloudinaryMp4Url = (url) => {
+  if (!url || !url.includes('/video/upload/')) return url;
+
+  const transformedUrl = url.replace('/video/upload/', '/video/upload/f_mp4,q_auto/');
+
+  return transformedUrl.replace(/\.(webm|mov|mkv|avi|mp4)(\?.*)?$/i, '.mp4$2');
+};
+
+const SummaryResultPage = () => {
+  const [result, setResult] = useState(null);
+  const [isLoadingResult, setIsLoadingResult] = useState(true);
+  const [resultError, setResultError] = useState('');
+
+  const resultId = getSummaryIdFromPath();
+
+  useEffect(() => {
+    const loadResult = async () => {
+      if (!resultId) {
+        setResultError('Link hasil tidak valid.');
+        setIsLoadingResult(false);
+        return;
+      }
+
+      if (!supabase) {
+        setResultError('Supabase belum disetting.');
+        setIsLoadingResult(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('aestho_results')
+        .select('*')
+        .eq('id', resultId)
+        .single();
+
+      if (error || !data) {
+        setResultError('Hasil tidak ditemukan atau sudah tidak tersedia.');
+        setIsLoadingResult(false);
+        return;
+      }
+
+      setResult(data);
+      setIsLoadingResult(false);
+    };
+
+    loadResult();
+  }, [resultId]);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      alert('Link berhasil disalin.');
+    } catch {
+      alert('Gagal menyalin link.');
+    }
+  };
+
+  if (isLoadingResult) {
+    return (
+      <main className="min-h-screen bg-[#f7f5f2] text-black flex items-center justify-center p-6">
+        <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-xl p-8 text-center max-w-sm w-full">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-zinc-500" />
+          <h1 className="font-title text-3xl mb-2">Aestho.</h1>
+          <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 uppercase">Loading your result</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (resultError) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-6">
+        <div className="bg-zinc-900 rounded-[2rem] border border-zinc-800 shadow-xl p-8 text-center max-w-sm w-full">
+          <h1 className="font-title text-3xl mb-3">Aestho.</h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">{resultError}</p>
+          <a href="/" className="mt-6 inline-flex px-5 py-3 rounded-full bg-white text-black text-[10px] font-mono tracking-widest">MAKE ANOTHER</a>
+        </div>
+      </main>
+    );
+  }
+
+  const mp4Url = result.video_mp4_url || toCloudinaryMp4Url(result.video_url);
+
+  return (
+    <main className="min-h-screen bg-[#f7f5f2] text-black flex flex-col items-center justify-center p-4 md:p-8 overflow-hidden relative">
+      <div className="absolute top-0 left-0 w-64 h-64 bg-pink-200/40 blur-3xl rounded-full -translate-x-20 -translate-y-20" />
+      <div className="absolute bottom-0 right-0 w-72 h-72 bg-blue-200/50 blur-3xl rounded-full translate-x-20 translate-y-20" />
+
+      <section className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-5 md:gap-8 items-center">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] md:rounded-[2.5rem] border border-white shadow-2xl p-6 md:p-8">
+          <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 uppercase mb-3">Aestho Photobooth</p>
+          <h1 className="font-title text-4xl md:text-6xl leading-none mb-4">Thanks for using Aestho ✨</h1>
+          <p className="text-sm md:text-base text-zinc-500 leading-relaxed mb-6">
+            Your photobooth result is ready. Save your JPG strip, download the Live Moment, or share this page with your friends.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a href={result.photo_url} target="_blank" rel="noopener noreferrer" download="Aestho-Strip.jpg" className="text-center px-5 py-3 rounded-full bg-black text-white text-[10px] font-mono tracking-widest hover:opacity-80 transition-opacity">DOWNLOAD JPG</a>
+
+            {mp4Url && (
+              <a href={mp4Url} target="_blank" rel="noopener noreferrer" download="Aestho-Live-Moment.mp4" className="text-center px-5 py-3 rounded-full bg-black text-white text-[10px] font-mono tracking-widest hover:opacity-80 transition-opacity">DOWNLOAD MP4</a>
+            )}
+
+            <button onClick={handleCopyLink} className="px-5 py-3 rounded-full bg-white border border-zinc-200 text-black text-[10px] font-mono tracking-widest hover:bg-zinc-50 transition-colors">COPY LINK</button>
+            <a href="/" className="text-center px-5 py-3 rounded-full bg-zinc-100 text-black text-[10px] font-mono tracking-widest hover:bg-zinc-200 transition-colors">MAKE ANOTHER</a>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-zinc-100">
+            <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Result ID: {result.id}</p>
+            {result.template_name && (
+              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase mt-1">Frame: {result.template_name}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-[2rem] border border-white shadow-2xl p-4 flex flex-col gap-3">
+            <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 text-center">STATIC JPG</p>
+            <img src={result.photo_url} alt="Aestho Photobooth Result" className="max-h-[70vh] w-auto mx-auto rounded-[1.5rem] shadow-lg bg-white" />
+          </div>
+
+          {result.video_url && (
+            <div className="bg-white rounded-[2rem] border border-white shadow-2xl p-4 flex flex-col gap-3">
+              <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 text-center">LIVE MOMENT</p>
+              <video src={result.video_url} controls playsInline className="w-full rounded-[1.5rem] shadow-lg bg-black" />
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  );
+};
 
 const App = () => {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/id/summary')) {
+    return <SummaryResultPage />;
+  }
   // ==================================================================================
   // 1. KONFIGURASI DATA
   // ==================================================================================
@@ -535,7 +699,15 @@ const App = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSharingProcess, setIsSharingProcess] = useState(false);
 
+  // QR Result State
+  const [qrResultUrl, setQrResultUrl] = useState('');
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+
   const MAX_PHOTOS = 8;
+
+  const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
   // ==================================================================================
   // OPTIMASI PERFORMA MOBILE
@@ -1228,35 +1400,43 @@ const App = () => {
       return mimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) || '';
   };
 
-  const downloadStaticJPG = async () => {
+  const createStaticJpgBlob = async () => {
       if (!window.html2canvas || !staticStripRef.current) {
-          showToast('Sistem sedang memuat pemroses gambar. Silakan tunggu sebentar.');
-          return;
+          throw new Error('Sistem pemroses JPG belum siap. Coba tunggu sebentar.');
       }
+
+      await Promise.all([
+          ...selectedStripPhotos.map((photoData) => loadCanvasImage(photoData?.url)),
+          loadCanvasImage(selectedTemplate?.overlayUrl),
+          ...placedStickers.map((sticker) => loadCanvasImage(sticker.url))
+      ]);
+
+      await waitForStripAssets(staticStripRef.current);
+
+      const canvas = await window.html2canvas(staticStripRef.current, {
+          useCORS: true,
+          allowTaint: true,
+          scale: getExportScale(),
+          backgroundColor: null,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: staticStripRef.current.scrollWidth,
+          windowHeight: staticStripRef.current.scrollHeight
+      });
+
+      return canvasToBlob(canvas, 'image/jpeg', 0.92);
+  };
+
+  const downloadStaticJPG = async () => {
       setIsDownloadingJPG(true);
+
       try {
-          await Promise.all([
-              ...selectedStripPhotos.map((photoData) => loadCanvasImage(photoData?.url)),
-              loadCanvasImage(selectedTemplate?.overlayUrl),
-              ...placedStickers.map((sticker) => loadCanvasImage(sticker.url))
-          ]);
-          await waitForStripAssets(staticStripRef.current);
-          const canvas = await window.html2canvas(staticStripRef.current, {
-              useCORS: true,
-              allowTaint: true,
-              scale: getExportScale(),
-              backgroundColor: null,
-              logging: false,
-              scrollX: 0,
-              scrollY: 0,
-              windowWidth: staticStripRef.current.scrollWidth,
-              windowHeight: staticStripRef.current.scrollHeight
-          });
-          const blob = await canvasToBlob(canvas, 'image/jpeg', 0.92);
+          const blob = await createStaticJpgBlob();
           await saveBlobToDevice(blob, 'Aestho-Strip.jpg', 'My Aestho photostrip 📸');
       } catch (err) {
           console.error('Failed to generate JPG', err);
-          showToast('Gagal memproses JPG. Coba tunggu semua gambar tampil dulu lalu tekan lagi.');
+          showToast(err.message || 'Gagal memproses JPG. Coba tunggu semua gambar tampil dulu lalu tekan lagi.');
       } finally {
           setIsDownloadingJPG(false);
       }
@@ -1331,204 +1511,225 @@ const App = () => {
       }
   };
 
-  const downloadLiveVideo = async () => {
+  const createLiveVideoBlob = async () => {
       if (!window.html2canvas || !baseStripRef.current) {
-          showToast('Sistem belum siap, mohon tunggu sebentar.');
-          return;
+          throw new Error('Sistem pemroses video belum siap. Coba tunggu sebentar.');
       }
-      setIsDownloadingVideo(true);
+
+      if (!HTMLCanvasElement.prototype.captureStream || !window.MediaRecorder) {
+          throw new Error('Browser ini belum mendukung export Live Moment. Coba pakai Chrome Android atau Safari terbaru.');
+      }
+
       const config = getLayoutConfig(selectedLayout);
 
-      try {
-          if (!HTMLCanvasElement.prototype.captureStream || !window.MediaRecorder) {
-              showToast('Browser HP ini belum mendukung export Live Moment. Coba pakai Chrome Android atau Safari terbaru.');
-              setIsDownloadingVideo(false);
-              return;
-          }
+      await waitForStripAssets(baseStripRef.current);
 
-          await waitForStripAssets(baseStripRef.current);
-          const baseCanvas = await window.html2canvas(baseStripRef.current, {
-              scale: 1,
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: null,
-              logging: false,
-              scrollX: 0,
-              scrollY: 0,
-              windowWidth: baseStripRef.current.scrollWidth,
-              windowHeight: baseStripRef.current.scrollHeight
+      const baseCanvas = await window.html2canvas(baseStripRef.current, {
+          scale: 1,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: baseStripRef.current.scrollWidth,
+          windowHeight: baseStripRef.current.scrollHeight
+      });
+
+      const photoImages = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+          if (!photoData?.url) return null;
+          return loadCanvasImage(photoData.url);
+      }));
+
+      const videos = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+          if (!photoData || !capturedClips[photoData.originalIndex]) return null;
+
+          return new Promise((resolve) => {
+              const v = document.createElement('video');
+              v.src = capturedClips[photoData.originalIndex];
+              v.muted = true;
+              v.loop = true;
+              v.playsInline = true;
+              v.preload = 'auto';
+              v.crossOrigin = 'anonymous';
+
+              const finish = () => resolve(v);
+              v.onloadeddata = finish;
+              v.oncanplay = finish;
+              v.onerror = () => resolve(null);
+              setTimeout(() => resolve(v.readyState >= 2 ? v : null), 2200);
+              v.load();
           });
+      }));
 
-          const photoImages = await Promise.all(selectedStripPhotos.map(async (photoData) => {
-              if (!photoData?.url) return null;
-              return loadCanvasImage(photoData.url);
-          }));
+      const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
+          if (!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
+          const overlayUrl = getOverlayImage(selectedCharacterData, photoData.originalIndex);
+          return loadCanvasImage(overlayUrl);
+      }));
 
-          const videos = await Promise.all(selectedStripPhotos.map(async (photoData) => {
-              if (!photoData || !capturedClips[photoData.originalIndex]) return null;
-              return new Promise((resolve) => {
-                  const v = document.createElement('video');
-                  v.src = capturedClips[photoData.originalIndex];
-                  v.muted = true;
-                  v.loop = true;
-                  v.playsInline = true;
-                  v.preload = 'auto';
-                  v.crossOrigin = 'anonymous';
+      const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
+          const img = await loadCanvasImage(stk.url);
+          return img ? { img, ...stk } : null;
+      }));
 
-                  const finish = () => resolve(v);
-                  v.onloadeddata = finish;
-                  v.oncanplay = finish;
-                  v.onerror = () => resolve(null);
-                  setTimeout(() => resolve(v.readyState >= 2 ? v : null), 2200);
-                  v.load();
-              });
-          }));
+      const recordCanvas = document.createElement('canvas');
+      const videoRenderScale = getVideoRenderScale();
 
-          const overlays = await Promise.all(selectedStripPhotos.map(async (photoData) => {
-              if (!photoData || selectedMode !== 'character' || !selectedCharacterData) return null;
-              const overlayUrl = getOverlayImage(selectedCharacterData, photoData.originalIndex);
-              return loadCanvasImage(overlayUrl);
-          }));
+      recordCanvas.width = Math.round(config.W * videoRenderScale);
+      recordCanvas.height = Math.round(config.H * videoRenderScale);
 
-          const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
-              const img = await loadCanvasImage(stk.url);
-              return img ? { img, ...stk } : null;
-          }));
+      const ctx = recordCanvas.getContext('2d');
+      const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 24 : 30);
 
-          const recordCanvas = document.createElement('canvas');
-          const videoRenderScale = getVideoRenderScale();
-          recordCanvas.width = Math.round(config.W * videoRenderScale);
-          recordCanvas.height = Math.round(config.H * videoRenderScale);
-          const ctx = recordCanvas.getContext('2d');
+      const selectedMimeType = getSupportedRecorderMimeType();
 
-          const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 24 : 30);
-          const selectedMimeType = getSupportedRecorderMimeType();
-          if (!selectedMimeType) {
-              showToast('Browser ini belum mendukung format video untuk Live Moment.');
-              setIsDownloadingVideo(false);
-              return;
-          }
+      if (!selectedMimeType) {
+          throw new Error('Browser ini belum mendukung format video untuk Live Moment.');
+      }
 
-          const options = { mimeType: selectedMimeType };
-          const recorder = new MediaRecorder(outputStream, options);
-          const chunks = [];
-          recorder.ondataavailable = (e) => {
-              if (e.data && e.data.size > 0) chunks.push(e.data);
-          };
+      const options = { mimeType: selectedMimeType };
+      const recorder = new MediaRecorder(outputStream, options);
+      const chunks = [];
 
-          let r = 0;
-          const rClass = selectedTemplate.photoRadius || '';
-          if (rClass.includes('rounded-sm')) r = 2;
-          else if (rClass.includes('rounded-md')) r = 6;
-          else if (rClass.includes('rounded-lg')) r = 8;
-          else if (rClass.includes('rounded-xl')) r = 12;
-          else if (rClass.includes('rounded-2xl')) r = 16;
-          else if (rClass.includes('rounded-3xl')) r = 24;
-          else if (rClass.includes('rounded-[3rem]')) r = 48;
-          else if (rClass.includes('rounded-[40px]')) r = 40;
+      recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
 
-          const clipRoundedSlot = (slot) => {
-              ctx.beginPath();
-              ctx.moveTo(slot.x + r, slot.y);
-              ctx.lineTo(slot.x + slot.w - r, slot.y);
-              ctx.quadraticCurveTo(slot.x + slot.w, slot.y, slot.x + slot.w, slot.y + r);
-              ctx.lineTo(slot.x + slot.w, slot.y + slot.h - r);
-              ctx.quadraticCurveTo(slot.x + slot.w, slot.y + slot.h, slot.x + slot.w - r, slot.y + slot.h);
-              ctx.lineTo(slot.x + r, slot.y + slot.h);
-              ctx.quadraticCurveTo(slot.x, slot.y + slot.h, slot.x, slot.y + slot.h - r);
-              ctx.lineTo(slot.x, slot.y + r);
-              ctx.quadraticCurveTo(slot.x, slot.y, slot.x + r, slot.y);
-              ctx.closePath();
-              ctx.clip();
-          };
+      let r = 0;
+      const rClass = selectedTemplate.photoRadius || '';
 
-          await Promise.all(videos.map((v) => {
-              if (!v) return Promise.resolve();
-              return v.play().catch(() => {});
-          }));
+      if (rClass.includes('rounded-sm')) r = 2;
+      else if (rClass.includes('rounded-md')) r = 6;
+      else if (rClass.includes('rounded-lg')) r = 8;
+      else if (rClass.includes('rounded-xl')) r = 12;
+      else if (rClass.includes('rounded-2xl')) r = 16;
+      else if (rClass.includes('rounded-3xl')) r = 24;
+      else if (rClass.includes('rounded-[3rem]')) r = 48;
+      else if (rClass.includes('rounded-[40px]')) r = 40;
 
-          let isRecording = true;
-          const drawFrame = () => {
-              if (!isRecording) return;
+      const clipRoundedSlot = (slot) => {
+          ctx.beginPath();
+          ctx.moveTo(slot.x + r, slot.y);
+          ctx.lineTo(slot.x + slot.w - r, slot.y);
+          ctx.quadraticCurveTo(slot.x + slot.w, slot.y, slot.x + slot.w, slot.y + r);
+          ctx.lineTo(slot.x + slot.w, slot.y + slot.h - r);
+          ctx.quadraticCurveTo(slot.x + slot.w, slot.y + slot.h, slot.x + slot.w - r, slot.y + slot.h);
+          ctx.lineTo(slot.x + r, slot.y + slot.h);
+          ctx.quadraticCurveTo(slot.x, slot.y + slot.h, slot.x, slot.y + slot.h - r);
+          ctx.lineTo(slot.x, slot.y + r);
+          ctx.quadraticCurveTo(slot.x, slot.y, slot.x + r, slot.y);
+          ctx.closePath();
+          ctx.clip();
+      };
 
-              ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+      await Promise.all(videos.map((v) => {
+          if (!v) return Promise.resolve();
+          return v.play().catch(() => {});
+      }));
+
+      let isRecording = true;
+
+      const drawFrame = () => {
+          if (!isRecording) return;
+
+          ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+          ctx.save();
+          ctx.scale(videoRenderScale, videoRenderScale);
+          ctx.filter = 'none';
+          ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
+
+          for (let i = 0; i < config.slots.length; i++) {
+              const photoData = selectedStripPhotos[i];
+              if (!photoData) continue;
+
+              const slot = config.slots[i];
+              if (!slot) continue;
+
+              const vx = slot.x;
+              const vy = slot.y;
+              const vw = slot.w;
+              const vh = slot.h;
+
               ctx.save();
-              ctx.scale(videoRenderScale, videoRenderScale);
-              ctx.filter = 'none';
-              ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
+              clipRoundedSlot(slot);
 
-              for (let i = 0; i < config.slots.length; i++) {
-                  const photoData = selectedStripPhotos[i];
-                  if (!photoData) continue;
-
-                  const slot = config.slots[i];
-                  if (!slot) continue;
-
-                  const vx = slot.x;
-                  const vy = slot.y;
-                  const vw = slot.w;
-                  const vh = slot.h;
-
-                  ctx.save();
-                  clipRoundedSlot(slot);
-
-                  if (videos[i] && videos[i].readyState >= 2) {
-                      // Video live masih mentah dari kamera, jadi filter diterapkan di sini.
-                      if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
-                      ctx.translate(vx + vw, vy);
-                      ctx.scale(-1, 1);
-                      drawImageCover(ctx, videos[i], 0, 0, vw, vh);
-                  } else if (photoImages[i]) {
-                      // Foto diam dari kamera/upload sudah disimpan dengan filter, jadi jangan difilter dua kali.
-                      ctx.filter = 'none';
-                      drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
-                  }
-                  ctx.restore();
-
-                  if (overlays[i]) {
-                      ctx.save();
-                      if (currentFilter.style !== 'none') ctx.filter = `${currentFilter.style} brightness(1.1)`;
-
-                      const img = overlays[i];
-                      const wClass = getOverlayWidth(selectedCharacterData, photoData.originalIndex);
-                      let pct = 0.6;
-                      if (wClass.includes('w-[50%]')) pct = 0.5;
-                      if (wClass.includes('w-[85%]')) pct = 0.85;
-                      if (wClass.includes('w-[95%]')) pct = 0.95;
-
-                      const ow = vw * pct;
-                      const oh = (img.height / img.width) * ow;
-                      let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
-                      if (selectedCharacterData.cameraStyles && selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex / 2)]) {
-                          if (wClass.includes('w-[85%]')) ox += (ow * 0.15);
-                      }
-                      const oy = vy + vh - oh;
-
-                      ctx.drawImage(img, ox, oy, ow, oh);
-                      ctx.restore();
-                  }
+              if (videos[i] && videos[i].readyState >= 2) {
+                  if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
+                  ctx.translate(vx + vw, vy);
+                  ctx.scale(-1, 1);
+                  drawImageCover(ctx, videos[i], 0, 0, vw, vh);
+              } else if (photoImages[i]) {
+                  ctx.filter = 'none';
+                  drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
               }
 
-              stickersImages.forEach((stk) => {
-                  if (stk && stk.img) {
-                      ctx.save();
-                      const cx = stk.x + stk.w / 2;
-                      const cy = stk.y + stk.h / 2;
-                      ctx.translate(cx, cy);
-                      ctx.rotate((stk.rotation || 0) * Math.PI / 180);
-                      ctx.scale(stk.scale || 1, stk.scale || 1);
-                      ctx.drawImage(stk.img, -stk.w / 2, -stk.h / 2, stk.w, stk.h);
-                      ctx.restore();
-                  }
-              });
-
               ctx.restore();
-              requestAnimationFrame(drawFrame);
+
+              if (overlays[i]) {
+                  ctx.save();
+
+                  if (currentFilter.style !== 'none') {
+                      ctx.filter = `${currentFilter.style} brightness(1.1)`;
+                  }
+
+                  const img = overlays[i];
+                  const wClass = getOverlayWidth(selectedCharacterData, photoData.originalIndex);
+
+                  let pct = 0.6;
+                  if (wClass.includes('w-[50%]')) pct = 0.5;
+                  if (wClass.includes('w-[85%]')) pct = 0.85;
+                  if (wClass.includes('w-[95%]')) pct = 0.95;
+
+                  const ow = vw * pct;
+                  const oh = (img.height / img.width) * ow;
+
+                  let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
+
+                  if (
+                      selectedCharacterData.cameraStyles &&
+                      selectedCharacterData.cameraStyles[Math.floor(photoData.originalIndex / 2)]
+                  ) {
+                      if (wClass.includes('w-[85%]')) ox += (ow * 0.15);
+                  }
+
+                  const oy = vy + vh - oh;
+
+                  ctx.drawImage(img, ox, oy, ow, oh);
+                  ctx.restore();
+              }
+          }
+
+          stickersImages.forEach((stk) => {
+              if (stk && stk.img) {
+                  ctx.save();
+
+                  const cx = stk.x + stk.w / 2;
+                  const cy = stk.y + stk.h / 2;
+
+                  ctx.translate(cx, cy);
+                  ctx.rotate((stk.rotation || 0) * Math.PI / 180);
+                  ctx.scale(stk.scale || 1, stk.scale || 1);
+                  ctx.drawImage(stk.img, -stk.w / 2, -stk.h / 2, stk.w, stk.h);
+
+                  ctx.restore();
+              }
+          });
+
+          ctx.restore();
+          requestAnimationFrame(drawFrame);
+      };
+
+      return new Promise((resolve, reject) => {
+          recorder.onerror = () => {
+              isRecording = false;
+              reject(new Error('Recorder video mengalami error.'));
           };
 
-          recorder.onstop = async () => {
+          recorder.onstop = () => {
               try {
                   isRecording = false;
+
                   videos.forEach((v) => {
                       if (v) {
                           v.pause();
@@ -1538,19 +1739,17 @@ const App = () => {
                   });
 
                   if (!chunks.length) {
-                      showToast('Video gagal dibuat. Coba ulangi sekali lagi setelah Live Moment tampil.');
+                      reject(new Error('Video gagal dibuat. Coba ulangi sekali lagi setelah Live Moment tampil.'));
                       return;
                   }
 
                   const mimeType = recorder.mimeType || selectedMimeType;
                   const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
                   const blob = new Blob(chunks, { type: mimeType });
-                  await saveBlobToDevice(blob, `Aestho-Live-Strip.${ext}`, 'My Aestho Live Moment 🎞️');
+
+                  resolve({ blob, mimeType, ext });
               } catch (err) {
-                  console.error('Failed to save video', err);
-                  showToast('Video berhasil dibuat, tapi gagal disimpan otomatis. Coba tekan VIDEO lagi.');
-              } finally {
-                  setIsDownloadingVideo(false);
+                  reject(err);
               }
           };
 
@@ -1560,10 +1759,131 @@ const App = () => {
           setTimeout(() => {
               if (recorder.state === 'recording') recorder.stop();
           }, 3500);
+      });
+  };
+
+  const downloadLiveVideo = async () => {
+      setIsDownloadingVideo(true);
+
+      try {
+          const { blob, ext } = await createLiveVideoBlob();
+          await saveBlobToDevice(blob, `Aestho-Live-Strip.${ext}`, 'My Aestho Live Moment 🎞️');
       } catch (err) {
           console.error('Failed to generate Video', err);
-          showToast('Gagal memproses Video. Coba pakai Chrome Android/Safari terbaru dan ulangi lagi.');
+          showToast(err.message || 'Gagal memproses Video. Coba pakai Chrome Android/Safari terbaru dan ulangi lagi.');
+      } finally {
           setIsDownloadingVideo(false);
+      }
+  };
+
+  const uploadBlobToCloudinary = async (blob, filename = 'aestho-file') => {
+      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+          throw new Error('Cloudinary belum disetting. Cek file .env atau Vercel Environment Variables.');
+      }
+
+      const file = new File([blob], filename, {
+          type: blob.type || 'application/octet-stream'
+      });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', 'aestho-results');
+
+      const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+          {
+              method: 'POST',
+              body: formData
+          }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+          throw new Error(data?.error?.message || 'Upload ke Cloudinary gagal.');
+      }
+
+      return data;
+  };
+
+  const saveResultToSupabase = async ({ photoUrl, videoUrl, videoMp4Url, videoMimeType }) => {
+      if (!supabase) {
+          throw new Error('Supabase belum disetting. Cek file .env atau Vercel Environment Variables.');
+      }
+
+      const resultId = generateResultId();
+
+      const { error } = await supabase
+          .from('aestho_results')
+          .insert({
+              id: resultId,
+              photo_url: photoUrl,
+              video_url: videoUrl,
+              video_mp4_url: videoMp4Url,
+              video_mime_type: videoMimeType,
+              template_name: selectedTemplate?.name || null,
+              layout_id: selectedLayout || null
+          });
+
+      if (error) {
+          throw new Error(error.message || 'Gagal menyimpan data ke Supabase.');
+      }
+
+      return resultId;
+  };
+
+  const handleGenerateQRCode = async () => {
+      if (isGeneratingQR) return;
+
+      setIsGeneratingQR(true);
+      setQrResultUrl('');
+
+      try {
+          showToast('Membuat JPG hasil photobooth...');
+
+          const jpgBlob = await createStaticJpgBlob();
+
+          showToast('Membuat Live Moment video... tunggu sekitar 4 detik.');
+
+          const videoResult = await createLiveVideoBlob();
+
+          showToast('Mengupload JPG ke Cloudinary...');
+
+          const photoUpload = await uploadBlobToCloudinary(
+              jpgBlob,
+              `Aestho-Strip-${Date.now()}.jpg`
+          );
+
+          showToast('Mengupload Live Moment ke Cloudinary...');
+
+          const videoUpload = await uploadBlobToCloudinary(
+              videoResult.blob,
+              `Aestho-Live-Moment-${Date.now()}.${videoResult.ext}`
+          );
+
+          const videoMp4Url = toCloudinaryMp4Url(videoUpload.secure_url);
+
+          showToast('Menyimpan halaman hasil...');
+
+          const resultId = await saveResultToSupabase({
+              photoUrl: photoUpload.secure_url,
+              videoUrl: videoUpload.secure_url,
+              videoMp4Url,
+              videoMimeType: videoResult.mimeType
+          });
+
+          const finalUrl = `${window.location.origin}/id/summary/${resultId}`;
+
+          setQrResultUrl(finalUrl);
+          setShowQRModal(true);
+
+          showToast('QR code berhasil dibuat. Scan untuk membuka hasil.');
+      } catch (err) {
+          console.error('QR generation failed:', err);
+          showToast(err.message || 'Gagal membuat QR code.');
+      } finally {
+          setIsGeneratingQR(false);
       }
   };
 
@@ -2141,6 +2461,15 @@ const App = () => {
                             <Share size={12} className="hidden md:block"/> SHARE
                         </button>
 
+                        <button
+                            onClick={handleGenerateQRCode}
+                            disabled={isGeneratingQR}
+                            className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-white text-black border border-zinc-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-100 dark:hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all shadow-sm"
+                        >
+                            {isGeneratingQR ? <Loader2 size={12} className="animate-spin" /> : <QrCode size={12} />}
+                            QR CODE
+                        </button>
+
                         <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                             {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
                         </button>
@@ -2150,6 +2479,76 @@ const App = () => {
                     </div>
                 </div>
                 
+                {showQRModal && qrResultUrl && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 dark:bg-black/70 backdrop-blur-md">
+                        <div className="relative w-full max-w-sm bg-white dark:bg-zinc-950 rounded-[2rem] border border-white/80 dark:border-zinc-800 shadow-2xl overflow-hidden">
+                            <div className="absolute top-0 left-0 w-32 h-32 bg-pink-200/60 dark:bg-pink-500/20 blur-3xl rounded-full -translate-x-12 -translate-y-12" />
+                            <div className="absolute bottom-0 right-0 w-36 h-36 bg-blue-200/70 dark:bg-blue-500/20 blur-3xl rounded-full translate-x-12 translate-y-12" />
+
+                            <button
+                                onClick={() => setShowQRModal(false)}
+                                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-500 hover:text-black dark:hover:text-white flex items-center justify-center transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+
+                            <div className="relative z-10 p-6 text-center">
+                                <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 uppercase mb-2">
+                                    Scan Result
+                                </p>
+
+                                <h2 className="font-title text-4xl text-black dark:text-white mb-2">
+                                    Your QR Code
+                                </h2>
+
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
+                                    Scan this code to open your Aestho result page with JPG and Live Moment.
+                                </p>
+
+                                <div className="bg-white rounded-[1.5rem] p-4 border border-zinc-100 shadow-inner flex items-center justify-center">
+                                    <QRCodeSVG
+                                        value={qrResultUrl}
+                                        size={210}
+                                        bgColor="#ffffff"
+                                        fgColor="#000000"
+                                        level="M"
+                                    />
+                                </div>
+
+                                <div className="mt-5 grid grid-cols-1 gap-3">
+                                    <a
+                                        href={qrResultUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full px-5 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] tracking-widest hover:opacity-80 transition-opacity"
+                                    >
+                                        OPEN RESULT PAGE
+                                    </a>
+
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(qrResultUrl);
+                                                showToast('Link QR berhasil disalin.');
+                                            } catch {
+                                                showToast('Gagal menyalin link QR.');
+                                            }
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 font-mono text-[10px] tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                                    >
+                                        <Copy size={12} />
+                                        COPY LINK
+                                    </button>
+                                </div>
+
+                                <p className="mt-4 text-[9px] text-zinc-400 font-mono break-all leading-relaxed">
+                                    {qrResultUrl}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* HIDDEN RENDER */}
                 <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
                     <AesthoStrip stripRef={staticStripRef} template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
