@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram } from 'lucide-react';
 
 const App = () => {
   // ==================================================================================
@@ -40,7 +40,7 @@ const App = () => {
       name: 'Classic White', 
       type: 'vertical', 
       desc: 'Clean white vertical strip.',
-      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex-col p-2 gap-2 bg-white shadow-xl flex',
+      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex-col p-2 gap-2 bg-white shadow-xl flex dark:ring-1 dark:ring-zinc-700',
       cssPhoto: 'w-full h-12 md:h-16',
       bgColor: 'bg-white',
       textColor: 'text-black',
@@ -51,7 +51,7 @@ const App = () => {
       name: 'Poster Grid (1200x1800)', 
       type: 'grid', 
       desc: '4R Wide grid format.',
-      cssContainer: 'w-[120px] h-[180px] md:w-[160px] md:h-[240px] pt-2.5 px-2.5 pb-6 bg-white shadow-xl grid grid-cols-2 gap-x-1 gap-y-1.5 content-start',
+      cssContainer: 'w-[120px] h-[180px] md:w-[160px] md:h-[240px] pt-2.5 px-2.5 pb-6 bg-white shadow-xl grid grid-cols-2 gap-x-1 gap-y-1.5 content-start dark:ring-1 dark:ring-zinc-700',
       cssPhoto: 'w-full aspect-[500/390] object-cover',
       bgColor: 'bg-white',
       textColor: 'text-black',
@@ -62,7 +62,7 @@ const App = () => {
       name: 'Coming Soon', 
       type: 'placeholder', 
       desc: 'More styles coming soon.',
-      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex items-center justify-center bg-zinc-50 border border-dashed border-zinc-300 shadow-sm',
+      cssContainer: 'w-16 h-[240px] md:w-24 md:h-[320px] flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-700 shadow-sm',
       cssPhoto: '',
       bgColor: 'bg-gray-100',
       textColor: 'text-gray-400',
@@ -77,14 +77,14 @@ const App = () => {
       name: 'Aestho Original', 
       desc: 'Minimalist blank canvas.', 
       icon: <Star className="w-6 h-6 md:w-8 md:h-8"/>, 
-      style: 'bg-white text-black border-gray-200' 
+      style: 'bg-white text-black border-gray-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-700' 
     },
     { 
       id: 'character', 
       name: 'Character Collab', 
       desc: 'Pose with idols & anime chars.', 
       icon: <Users className="w-6 h-6 md:w-8 md:h-8"/>, 
-      style: 'bg-black text-white border-black hover:shadow-xl' 
+      style: 'bg-black text-white border-black hover:shadow-xl dark:bg-zinc-800 dark:border-zinc-600' 
     }
   ];
 
@@ -490,6 +490,19 @@ const App = () => {
     'https://cdn-icons-png.flaticon.com/512/1046/1046374.png' 
   ];
 
+  // Dark mode dibuat pakai class strategy Tailwind.
+  // Ini penting agar dark mode jalan di VSCode/Vite, bukan hanya di Google Canvas.
+  const getInitialDarkMode = () => {
+      if (typeof window === 'undefined') return false;
+
+      const savedTheme = window.localStorage.getItem('aestho-theme');
+      if (savedTheme === 'dark') return true;
+      if (savedTheme === 'light') return false;
+
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
+  const [isDarkMode, setIsDarkMode] = useState(getInitialDarkMode);
   const [currentView, setCurrentView] = useState('home'); 
   const [selectedLayout, setSelectedLayout] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
@@ -579,6 +592,18 @@ const App = () => {
       window.addEventListener('resize', checkMobile);
       return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  useEffect(() => {
+      if (typeof document === 'undefined') return;
+
+      const root = document.documentElement;
+      root.classList.toggle('dark', isDarkMode);
+      window.localStorage.setItem('aestho-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+      setIsDarkMode(prev => !prev);
+  };
 
   // Load external scripts (html2canvas)
   useEffect(() => {
@@ -1565,7 +1590,7 @@ const App = () => {
 
     return (
         <div style={wrapperStyle}>
-            <div ref={stripRef} className={`${shadow ? 'shadow-2xl' : ''} bg-white transition-all duration-300`} style={stripTransformStyle}>
+            <div ref={stripRef} className={`${shadow ? 'shadow-2xl dark:shadow-[0_10px_40px_rgba(255,255,255,0.05)] dark:ring-1 dark:ring-zinc-800' : ''} bg-white transition-all duration-300`} style={stripTransformStyle}>
                 <div style={stripContentStyle}>
                     {template.sticker && <div className="absolute top-4 right-4 z-10 pointer-events-none drop-shadow-md origin-top-right scale-150">{template.sticker}</div>}
                     
@@ -1670,533 +1695,557 @@ const App = () => {
   };
 
   return (
-    <div className="relative w-full min-h-[100dvh] md:h-screen bg-[#FDFDFD] overflow-x-hidden overflow-y-auto md:overflow-hidden font-sans selection:bg-black selection:text-white"
-         onPointerMove={currentView === 'sticker-editor' ? onWorkspacePointerMove : undefined}
-         onPointerUp={currentView === 'sticker-editor' ? onWorkspacePointerUp : undefined}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Niconne&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Syncopate:wght@400;700&display=swap');
-        .font-title { font-family: 'Niconne', cursive; }
-        .font-serif { font-family: 'Cormorant Garamond', serif; }
-        .font-modern { font-family: 'Syncopate', sans-serif; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+    <div className={isDarkMode ? 'dark' : ''}>
+      <div className="relative w-full min-h-[100dvh] md:h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white transition-colors duration-500 overflow-x-hidden overflow-y-auto md:overflow-hidden font-sans selection:bg-black dark:selection:bg-white selection:text-white dark:selection:text-black"
+           onPointerMove={currentView === 'sticker-editor' ? onWorkspacePointerMove : undefined}
+           onPointerUp={currentView === 'sticker-editor' ? onWorkspacePointerUp : undefined}
+      >
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Niconne&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Syncopate:wght@400;700&display=swap');
+          .font-title { font-family: 'Niconne', cursive; }
+          .font-serif { font-family: 'Cormorant Garamond', serif; }
+          .font-modern { font-family: 'Syncopate', sans-serif; }
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
 
-      {/* HEADER LOGO */}
-      {currentView !== 'home' && currentView !== 'camera-session' && (
-        <div className="fixed top-0 left-0 w-full p-4 md:p-6 z-[60] pointer-events-none flex items-center justify-between">
-           <img crossOrigin="anonymous" src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Logo" className="h-8 md:h-12 w-auto object-contain pointer-events-auto" onError={(e) => { e.target.style.display = 'none'; }} />
+        {/* HEADER LOGO */}
+        {currentView !== 'home' && currentView !== 'camera-session' && (
+          <div className="fixed top-0 left-0 w-full p-4 md:p-6 z-[60] pointer-events-none flex items-center justify-between">
+             <img crossOrigin="anonymous" src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Logo" className="h-8 md:h-12 w-auto object-contain pointer-events-auto dark:invert" onError={(e) => { e.target.style.display = 'none'; }} />
+          </div>
+        )}
+
+        {/* GLOBAL BRANDING / WATERMARK */}
+        <div className="hidden md:block fixed bottom-6 left-6 z-[60] opacity-40 hover:opacity-100 transition-all duration-300 group cursor-default">
+           <img src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Dzev Logo" className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all dark:invert" />
         </div>
-      )}
 
-      {/* GLOBAL BRANDING / WATERMARK */}
-      <div className="hidden md:block fixed bottom-6 left-6 z-[60] opacity-40 hover:opacity-100 transition-all duration-300 group cursor-default">
-         <img src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Dzev Logo" className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all" />
-      </div>
-
-      {/* --- VIEW 1: HOME --- */}
-      {currentView === 'home' && (
-        <main className="relative z-30 flex flex-col items-center justify-center min-h-[100dvh] md:h-full text-center px-4 py-10 bg-[#FDFDFD] text-black">
-           <div className="relative mb-4 cursor-default select-none">
-               <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black z-10 relative">Aestho</h1>
-               <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black/5 absolute top-2 left-2 blur-sm">Aestho</h1>
-           </div>
-           <p className="font-serif text-sm md:text-xl text-black/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
-           <button onClick={handleStart} className="group flex flex-col items-center gap-1 px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black/60 hover:text-black transition-colors cursor-pointer">
-             <span>Enter Studio</span>
-             <div className="relative w-full h-[1px] mt-1">
-                 <div className="absolute inset-0 w-full h-full bg-gray-200"></div>
-                 <div className="absolute top-0 left-0 h-full bg-black w-0 group-hover:w-full transition-all duration-700 ease-out"></div>
+        {/* --- VIEW 1: HOME --- */}
+        {currentView === 'home' && (
+          <main className="relative z-30 flex flex-col items-center justify-center min-h-[100dvh] md:h-full text-center px-4 py-10">
+             
+             {/* TOGGLE DARK MODE */}
+             <div className="absolute top-6 right-6 md:top-8 md:right-8 z-[70]">
+                <button
+                  onClick={toggleDarkMode}
+                  className="p-3 md:p-4 rounded-full bg-black/5 dark:bg-white/10 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-all backdrop-blur-md border border-black/10 dark:border-white/10 flex items-center justify-center group shadow-sm"
+                  title="Toggle Theme"
+                >
+                  {isDarkMode ? <Sun size={20} className="group-hover:rotate-90 transition-transform duration-500" /> : <Moon size={20} className="group-hover:-rotate-12 transition-transform duration-500" />}
+                </button>
              </div>
-           </button>
-        </main>
-      )}
 
-      {/* --- VIEW 2: LAYOUT SELECTION --- */}
-      {currentView === 'layout' && (
-        <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 bg-[#FDFDFD] text-black overflow-y-auto md:overflow-visible">
-            <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-8 md:mb-12">Choose Canvas</h2>
-            <div className="flex gap-8 md:gap-12 items-center justify-center mb-8 md:mb-16 flex-wrap">
-                {layouts.map((l) => (
-                    <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} className={`flex flex-col items-center justify-center gap-6 transition-all duration-300 ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'} ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}`}>
-                        <div className={`${l.cssContainer} transition-transform ${!l.disabled ? 'group-hover:-translate-y-2' : ''} border border-gray-200`}>
-                             {!l.disabled ? (
-                               <>
-                                 {[...Array(l.type === 'grid' ? 6 : 4)].map((_,i) => (
-                                   <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}><div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div></div>
-                                 ))}
-                                 {l.type === 'vertical' && <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}><span className="font-title text-[10px]">Aestho.</span></div>}
-                               </>
-                             ) : (
-                               <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400">
-                                   <span className="font-serif text-4xl md:text-6xl italic">?</span>
-                                   <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed">Coming<br/>Soon</span>
-                               </div>
-                             )}
-                        </div>
-                        <div className="text-center">
-                          <span className={`font-modern text-xs tracking-widest uppercase block border-b border-transparent pb-1 ${!l.disabled ? 'group-hover:border-black' : ''}`}>{l.name}</span>
-                          <span className="font-serif text-[10px] text-gray-500 italic mt-1 block">{l.desc}</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <div className="flex gap-8">
-                 <button onClick={handleBackToHome} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase">Back</button>
-                 {selectedLayout && <button onClick={handleLayoutConfirm} className="bg-black text-white px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 transition-colors">Next</button>}
-            </div>
-        </main>
-      )}
+             <div className="relative mb-4 cursor-default select-none">
+                 <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black dark:text-white z-10 relative">Aestho</h1>
+                 <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black/5 dark:text-white/5 absolute top-2 left-2 blur-sm">Aestho</h1>
+             </div>
+             <p className="font-serif text-sm md:text-xl text-black/70 dark:text-white/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
+             <button onClick={handleStart} className="group flex flex-col items-center gap-1 px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer">
+               <span>Enter Studio</span>
+               <div className="relative w-full h-[1px] mt-1">
+                   <div className="absolute inset-0 w-full h-full bg-gray-200 dark:bg-zinc-800"></div>
+                   <div className="absolute top-0 left-0 h-full bg-black dark:bg-white w-0 group-hover:w-full transition-all duration-700 ease-out"></div>
+               </div>
+             </button>
+          </main>
+        )}
 
-      {/* --- VIEW 3: MODE SELECTION --- */}
-      {currentView === 'mode' && (
-        <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 bg-[#FDFDFD] text-black overflow-y-auto md:overflow-visible">
-            <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-8 md:mb-12">Select Style</h2>
-            <div className="flex gap-4 md:gap-6 mb-8 md:mb-16 flex-wrap justify-center w-full">
-                {modes.map((m) => (
-                      <div key={m.id} onClick={() => setSelectedMode(m.id)} className={`cursor-pointer border rounded-xl p-5 md:p-8 w-full max-w-xs md:w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 scale-105' : 'opacity-70 hover:opacity-100'}`}>
-                        <div className="mb-4 flex justify-center">{m.icon}</div>
-                        <h3 className="font-modern text-sm font-bold uppercase mb-2">{m.name}</h3>
-                        <p className="font-serif text-sm italic opacity-80">{m.desc}</p>
-                    </div>
-                ))}
-            </div>
-            <div className="flex gap-8">
-                 <button onClick={handleBackToLayout} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase">Back</button>
-                 {selectedMode && <button onClick={handleModeConfirm} className="bg-black text-white px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 transition-colors">Next</button>}
-            </div>
-        </main>
-      )}
+        {/* --- VIEW 2: LAYOUT SELECTION --- */}
+        {currentView === 'layout' && (
+          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Choose Canvas</h2>
+              <div className="flex gap-8 md:gap-12 items-center justify-center mb-8 md:mb-16 flex-wrap">
+                  {layouts.map((l) => (
+                      <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} className={`flex flex-col items-center justify-center gap-6 transition-all duration-300 ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'} ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}`}>
+                          <div className={`${l.cssContainer} transition-transform ${!l.disabled ? 'group-hover:-translate-y-2' : ''} border border-gray-200 dark:border-zinc-700`}>
+                               {!l.disabled ? (
+                                 <>
+                                   {[...Array(l.type === 'grid' ? 6 : 4)].map((_,i) => (
+                                     <div key={i} className={`${l.cssPhoto} bg-gray-200 overflow-hidden relative grayscale opacity-80`}><div className="w-full h-full bg-gradient-to-tr from-gray-300 to-gray-200"></div></div>
+                                   ))}
+                                   {l.type === 'vertical' && <div className={`w-full h-auto pt-2 flex justify-center items-end opacity-50 ${l.textColor}`}><span className="font-title text-[10px]">Aestho.</span></div>}
+                                 </>
+                               ) : (
+                                 <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400 dark:text-zinc-500">
+                                     <span className="font-serif text-4xl md:text-6xl italic">?</span>
+                                     <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed">Coming<br/>Soon</span>
+                                 </div>
+                               )}
+                          </div>
+                          <div className="text-center">
+                            <span className={`font-modern text-xs tracking-widest uppercase block border-b border-transparent pb-1 ${!l.disabled ? 'group-hover:border-black dark:group-hover:border-white' : ''}`}>{l.name}</span>
+                            <span className="font-serif text-[10px] text-gray-500 dark:text-zinc-400 italic mt-1 block">{l.desc}</span>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+              <div className="flex gap-8">
+                   <button onClick={handleBackToHome} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
+                   {selectedLayout && <button onClick={handleLayoutConfirm} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors">Next</button>}
+              </div>
+          </main>
+        )}
 
-      {/* --- VIEW 4: ANIME SELECTION --- */}
-      {currentView === 'anime' && (
-        <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 bg-[#FDFDFD] text-black overflow-y-auto md:overflow-visible">
-            <h2 className="font-serif text-3xl md:text-4xl italic text-black mb-8 md:mb-12">Pick Partner</h2>
-            <div className="w-full flex justify-center items-center relative max-w-4xl px-0 md:px-8 mb-8 md:mb-16">
-                 <div ref={animeListRef} className="w-full overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory px-4 flex gap-6 items-center scroll-smooth justify-start md:justify-center">
-                    {animeOptions.map((a) => (
-                        <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 rounded-xl p-5 md:p-6 w-32 h-40 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white transition-all ${a.color} hover:border-black shadow-sm group`}>
-                             <div className="opacity-50">{a.icon}</div>
-                             <img crossOrigin="anonymous" src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
-                             <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black`}>{a.name}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <button onClick={handleBackToModeFromAnime} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase">Back</button>
-        </main>
-      )}
+        {/* --- VIEW 3: MODE SELECTION --- */}
+        {currentView === 'mode' && (
+          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Select Style</h2>
+              <div className="flex gap-4 md:gap-6 mb-8 md:mb-16 flex-wrap justify-center w-full">
+                  {modes.map((m) => (
+                        <div key={m.id} onClick={() => setSelectedMode(m.id)} className={`cursor-pointer border rounded-xl p-5 md:p-8 w-full max-w-xs md:w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 dark:ring-zinc-600 scale-105' : 'opacity-70 hover:opacity-100'}`}>
+                          <div className="mb-4 flex justify-center">{m.icon}</div>
+                          <h3 className="font-modern text-sm font-bold uppercase mb-2">{m.name}</h3>
+                          <p className="font-serif text-sm italic opacity-80">{m.desc}</p>
+                      </div>
+                  ))}
+              </div>
+              <div className="flex gap-8">
+                   <button onClick={handleBackToLayout} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
+                   {selectedMode && <button onClick={handleModeConfirm} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors">Next</button>}
+              </div>
+          </main>
+        )}
 
-      {/* --- VIEW 5: FRAME SELECTION --- */}
-      {currentView === 'frame' && currentAnimeData && (
-        <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full bg-[#FDFDFD] text-black pt-24 md:pt-0 pb-32 md:pb-0 overflow-y-auto md:overflow-visible">
-            <div className="text-center mb-6 md:mb-8 px-4">
-                <p className="font-modern text-[10px] tracking-[0.3em] text-gray-400 uppercase mb-2">Selected Layout: {currentLayoutData?.name}</p>
-                <h2 className="font-serif text-3xl md:text-4xl italic text-black">Choose Character</h2>
-                <p className="font-sans text-[10px] text-gray-400 mt-2 flex items-center justify-center gap-1 animate-pulse"><ArrowRight size={10}/> Swipe to browse <ArrowLeft size={10}/></p>
-            </div>
-            <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8">
-                 <button onClick={() => scrollCharacterList('left')} className="absolute left-2 md:left-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex"><ChevronLeft size={16} /></button>
-                 <div ref={characterListRef} className="w-full overflow-x-auto pb-8 md:pb-12 hide-scrollbar snap-x snap-mandatory px-5 md:px-4 flex gap-4 md:gap-8 items-center scroll-smooth">
-                      {currentAnimeData.characters.map((char) => (
-                          <div key={char.id} onClick={() => setSelectedFrame(char.id)} className="group cursor-pointer flex flex-col items-center gap-4 md:gap-6 flex-shrink-0 snap-center">
-                              <div className={`relative transition-all duration-500 ease-out w-[88px] h-[292px] md:w-[120px] md:h-[400px] flex flex-col bg-white ${selectedFrame === char.id ? 'shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] scale-105 rotate-0 z-10 ring-1 ring-black/5' : 'shadow-lg hover:shadow-xl hover:-translate-y-2 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 rotate-1'}`}>
-                                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#FDFDFD] rounded-full shadow-inner z-20 border border-gray-200"></div>
-                                  <div className="flex-1 flex flex-col p-3 gap-2">
-                                      {[...Array(4)].map((_, i) => (
-                                          <div key={i} className="flex-1 bg-zinc-50 relative overflow-hidden border border-zinc-100 shadow-inner">
-                                              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
-                                              {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
-                                          </div>
-                                      ))}
-                                  </div>
-                                  <div className="h-8 flex items-center justify-center pb-2"><span className="font-title text-[10px] text-zinc-400">Aestho.</span></div>
-                              </div>
-                              <span className={`font-modern text-[10px] tracking-[0.2em] uppercase transition-all duration-300 ${selectedFrame === char.id ? 'text-black font-semibold' : 'text-gray-300 group-hover:text-gray-500'}`}>{char.name}</span>
+        {/* --- VIEW 4: ANIME SELECTION --- */}
+        {currentView === 'anime' && (
+          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Pick Partner</h2>
+              <div className="w-full flex justify-center items-center relative max-w-4xl px-0 md:px-8 mb-8 md:mb-16">
+                   <div ref={animeListRef} className="w-full overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory px-4 flex gap-6 items-center scroll-smooth justify-start md:justify-center">
+                      {animeOptions.map((a) => (
+                          <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 dark:border-zinc-700 rounded-xl p-5 md:p-6 w-32 h-40 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white dark:bg-zinc-900 transition-all ${a.color} hover:border-black dark:hover:border-zinc-500 shadow-sm group`}>
+                               <div className="opacity-50">{a.icon}</div>
+                               <img crossOrigin="anonymous" src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
+                               <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black dark:group-hover:text-white`}>{a.name}</span>
                           </div>
                       ))}
-                 </div>
-                 <button onClick={() => scrollCharacterList('right')} className="absolute right-2 md:right-0 z-20 w-10 h-10 rounded-full border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-black hover:text-white hover:border-black transition-all duration-300 hidden md:flex"><ChevronRight size={16} /></button>
-            </div>
-            <div className="fixed bottom-0 left-0 w-full flex flex-col md:flex-row justify-center gap-3 md:gap-8 items-center bg-gradient-to-t from-white via-white to-transparent pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-8 px-4">
-                 <button onClick={handleBackToAnimeFromFrame} className="font-modern text-[10px] text-gray-400 hover:text-black uppercase flex items-center gap-2 order-2 md:order-1"><ArrowLeft size={12}/> Select Series</button>
-                {selectedFrame && ( <button onClick={handleFrameConfirm} className="bg-black text-white px-10 py-3 font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 transition-all flex items-center gap-3 order-1 md:order-2 w-full md:w-auto justify-center border border-black hover:invert">Start Session</button> )}
-            </div>
-        </main>
-      )}
-
-      {/* --- VIEW 6: CAMERA SESSION --- */}
-      {currentView === 'camera-session' && (
-        <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-y-auto md:overflow-hidden justify-start md:justify-between">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white pointer-events-none"></div>
-            <div className="w-full p-4 md:p-6 z-20 flex justify-between items-center text-zinc-400">
-                <div className="flex gap-4 items-center">
-                    <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 text-black transition-colors border border-transparent hover:border-zinc-200"><ArrowLeft size={20} /></button>
-                    <span className="font-title text-2xl md:text-3xl text-zinc-900 tracking-tighter">Aestho.</span>
-                    <div className="h-4 w-px bg-zinc-300 hidden md:block"></div>
-                    <span className="font-modern text-[10px] uppercase tracking-[0.3em] hidden md:block">{currentLayoutData?.name}</span>
-                </div>
-                <button onClick={() => window.location.reload()} className="hover:text-zinc-900 transition-colors opacity-50 hover:opacity-100"><RefreshCw size={16}/></button>
-            </div>
-            <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-start md:justify-center px-3 py-2 md:p-4 gap-3 md:gap-4 relative z-10 min-h-0 md:h-full overflow-visible md:overflow-hidden">
-                <div className="flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full shrink-0">
-                     <div className="mb-2 md:mb-4 text-center z-20">
-                        <span className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black border border-zinc-200 shadow-sm">SHOT {capturedPhotos.length} / {MAX_PHOTOS}</span>
-                    </div>
-                    <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 bg-white w-full max-w-[92vw] md:max-w-none md:w-auto h-auto md:h-[65vh] max-h-[42dvh] sm:max-h-[48dvh] md:max-h-none aspect-[3/4] md:aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100">
-                        {useMockCamera ? ( <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-500"><span className="font-mono text-xs">Mock Camera Active</span></div> ) : (
-                            <>
-                                {isCameraLoading && <div className="absolute inset-0 flex items-center justify-center bg-white z-20"><Loader2 className="animate-spin text-zinc-300"/></div>}
-                                {!cameraError ? ( <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0" style={{ filter: currentFilter.style }} /> ) : (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 z-0">
-                                    <Camera size={32} />
-                                    <p className="font-modern text-[10px]">Camera Error</p>
-                                    <button onClick={() => setUseMockCamera(true)} className="mt-2 px-4 py-1 border border-zinc-300 text-[10px] hover:bg-zinc-100">Use Mock Camera</button>
-                                </div> )}
-                            </>
-                        )}
-                        {selectedMode === 'character' && (
-                        <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-                            {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
-                                <img crossOrigin="anonymous" src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
-                                    className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
-                                    style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` }} />
-                            )}
-                        </div>
-                        )}
-                        {isCountingDown && ( <div className="absolute top-8 right-10 z-100 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] animate-pulse">{countdownValue}</span></div> )}
-                    </div>
-                </div>
-                <div className="flex md:flex-col flex-row w-full max-w-[92vw] md:max-w-none md:w-32 h-16 sm:h-20 md:h-[450px] bg-white/40 backdrop-blur-md border border-zinc-200 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
-                    {capturedPhotos.map((photo, i) => (
-                        <div key={i} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 shadow-sm relative bg-white flex-shrink-0">
-                             <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
-                             <CoverPhoto src={photo} className="w-full h-full z-0 relative" alt={`Captured ${i}`} />
-                             {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
-                        </div>
-                    ))}
-                    {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 flex items-center justify-center text-zinc-300 bg-white/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
-                </div>
-            </div>
-            <div className="w-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:pb-8 md:pt-4 flex justify-center items-center gap-3 sm:gap-6 md:gap-12 z-20">
-                 <div className="flex flex-col items-center gap-2 md:gap-3">
-                     <div className="flex gap-2 md:gap-3 bg-white/50 backdrop-blur-md px-3 py-2 md:px-4 md:py-2 rounded-full border border-zinc-200 shadow-sm">
-                        {filters.map(f => ( <button key={f.id} onClick={() => setCurrentFilter(f)} className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white border-black scale-110 shadow-md' : 'text-zinc-400 border-transparent hover:text-black hover:border-zinc-300 hover:bg-white'}`}>{f.name[0]}</button> ))}
-                     </div>
-                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Tone</span>
-                 </div>
-                 <div className="flex flex-col items-center gap-2 md:gap-3">
-                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept="image/*" />
-                     <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center justify-center hover:bg-white hover:border-zinc-400 transition-all text-zinc-600 shadow-sm"><Upload size={16} className="md:w-5 md:h-5"/></button>
-                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Upload</span>
-                 </div>
-                 <div className="relative group">
-                     <button onClick={handleShutterClick} className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
-                        <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800'} flex items-center justify-center`}>
-                            {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 transition-transform duration-300 group-hover:scale-90"></div>}
-                        </div>
-                     </button>
-                 </div>
-                 <div className="flex flex-col items-center gap-2 md:gap-3">
-                     <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 bg-white/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white hover:border-zinc-400 transition-all font-mono text-xs md:text-sm text-zinc-700 font-bold shadow-sm"><Clock size={14} className="opacity-70 md:w-4 md:h-4"/><span>{timerDuration}s</span></button>
-                     <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 font-semibold uppercase">Delay</span>
-                 </div>
-            </div>
-        </main>
-      )}
-
-      {/* --- VIEW 7: RESULT SELECTION --- */}
-      {currentView === 'result-selection' && (
-          <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-y-auto md:overflow-hidden">
-              <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 bg-white/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
-                  <h1 className="font-title text-2xl md:text-3xl">Select & Arrange</h1>
-                  <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">CHOOSE FRAME <ArrowRight size={12}/></button>
+                  </div>
               </div>
-              <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full p-4 md:p-8 gap-6 md:gap-12 justify-start md:justify-center items-center overflow-y-visible md:overflow-y-auto pb-10">
-                  <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
-                      <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center">YOUR STRIP</div>
-                      
-                      {selectedLayout === 'grid-4r' ? (
-                          <div className="w-[180px] md:w-[240px] h-[270px] md:h-[360px] bg-white shadow-2xl p-2 border border-zinc-200 grid grid-cols-2 grid-rows-3 gap-2 mx-auto">
-                              {selectedStripPhotos.map((photoData, index) => (
-                                  <div key={index} className="bg-zinc-100 relative overflow-hidden group border border-zinc-100" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
-                                      {photoData ? (
-                                          <>
-                                            <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
-                                            {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
-                                            )}
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-6 h-6 md:w-8 md:h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
-                                          </>
-                                      ) : ( <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[10px] font-mono border-2 border-dashed border-zinc-200">{index + 1}</div> )}
-                                  </div>
-                              ))}
-                          </div>
-                      ) : (
-                          <div className="w-[100px] md:w-[140px] h-[340px] md:h-[480px] bg-white shadow-2xl p-2 border border-zinc-200 flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto">
-                              {selectedStripPhotos.map((photoData, index) => (
-                                  <div key={index} className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
-                                      {photoData ? (
-                                          <>
-                                            <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
-                                            {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
-                                            )}
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
-                                          </>
-                                      ) : ( <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[10px] font-mono border-2 border-dashed border-zinc-200">{index + 1}</div> )}
-                                  </div>
-                              ))}
-                              <div className="mt-auto text-center font-title text-[10px] text-black pt-1">Aestho.</div>
-                          </div>
-                      )}
-                  </div>
-                  <div className="flex flex-col gap-4 w-full md:max-w-4xl h-auto md:h-full overflow-y-auto">
-                      <div className="font-modern text-[10px] tracking-widest text-zinc-400 text-center md:text-left">CAPTURED SHOTS</div>
-                      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pr-0 md:pr-2 pb-20">
-                          {capturedPhotos.map((photo, i) => {
-                              const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
-                              return (
-                                  <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white border border-zinc-200 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black hover:shadow-lg'}`}>
-                                      <CoverPhoto src={photo} className="w-full h-full" alt={`Shot ${i}`} />
-                                      {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
-                                      {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
-                                      <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
-                                  </div>
-                              );
-                          })}
-                      </div>
-                  </div>
+              <button onClick={handleBackToModeFromAnime} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
+          </main>
+        )}
+
+        {/* --- VIEW 5: FRAME SELECTION --- */}
+        {currentView === 'frame' && currentAnimeData && (
+          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full pt-24 md:pt-0 pb-32 md:pb-0 overflow-y-auto md:overflow-visible">
+              <div className="text-center mb-6 md:mb-8 px-4">
+                  <p className="font-modern text-[10px] tracking-[0.3em] text-gray-400 dark:text-zinc-500 uppercase mb-2">Selected Layout: {currentLayoutData?.name}</p>
+                  <h2 className="font-serif text-3xl md:text-4xl italic">Choose Character</h2>
+                  <p className="font-sans text-[10px] text-gray-400 dark:text-zinc-500 mt-2 flex items-center justify-center gap-1 animate-pulse"><ArrowRight size={10}/> Swipe to browse <ArrowLeft size={10}/></p>
+              </div>
+              <div className="w-full flex justify-center items-center relative max-w-4xl px-4 md:px-8">
+                   <button onClick={() => scrollCharacterList('left')} className="absolute left-2 md:left-0 z-20 w-10 h-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-black transition-all duration-300 hidden md:flex"><ChevronLeft size={16} /></button>
+                   <div ref={characterListRef} className="w-full overflow-x-auto pb-8 md:pb-12 hide-scrollbar snap-x snap-mandatory px-5 md:px-4 flex gap-4 md:gap-8 items-center scroll-smooth">
+                        {currentAnimeData.characters.map((char) => (
+                            <div key={char.id} onClick={() => setSelectedFrame(char.id)} className="group cursor-pointer flex flex-col items-center gap-4 md:gap-6 flex-shrink-0 snap-center">
+                                <div className={`relative transition-all duration-500 ease-out w-[88px] h-[292px] md:w-[120px] md:h-[400px] flex flex-col bg-white dark:bg-zinc-100 ${selectedFrame === char.id ? 'shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.1)] scale-105 rotate-0 z-10 ring-1 ring-black/5 dark:ring-white/10' : 'shadow-lg hover:shadow-xl hover:-translate-y-2 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 rotate-1'}`}>
+                                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-[#FDFDFD] dark:bg-zinc-200 rounded-full shadow-inner z-20 border border-gray-200 dark:border-zinc-300"></div>
+                                    <div className="flex-1 flex flex-col p-3 gap-2">
+                                        {[...Array(4)].map((_, i) => (
+                                            <div key={i} className="flex-1 bg-zinc-50 dark:bg-white relative overflow-hidden border border-zinc-100 shadow-inner">
+                                                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
+                                                {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="h-8 flex items-center justify-center pb-2"><span className="font-title text-[10px] text-zinc-400">Aestho.</span></div>
+                                </div>
+                                <span className={`font-modern text-[10px] tracking-[0.2em] uppercase transition-all duration-300 ${selectedFrame === char.id ? 'text-black dark:text-white font-semibold' : 'text-gray-300 dark:text-zinc-600 group-hover:text-gray-500 dark:group-hover:text-zinc-400'}`}>{char.name}</span>
+                            </div>
+                        ))}
+                   </div>
+                   <button onClick={() => scrollCharacterList('right')} className="absolute right-2 md:right-0 z-20 w-10 h-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-black transition-all duration-300 hidden md:flex"><ChevronRight size={16} /></button>
+              </div>
+              <div className="fixed bottom-0 left-0 w-full flex flex-col md:flex-row justify-center gap-3 md:gap-8 items-center bg-gradient-to-t from-white via-white dark:from-[#0a0a0a] dark:via-[#0a0a0a] to-transparent pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-8 px-4">
+                   <button onClick={handleBackToAnimeFromFrame} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase flex items-center gap-2 order-2 md:order-1 transition-colors"><ArrowLeft size={12}/> Select Series</button>
+                  {selectedFrame && ( <button onClick={handleFrameConfirm} className="bg-black text-white dark:bg-white dark:text-black px-10 py-3 font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-all flex items-center gap-3 order-1 md:order-2 w-full md:w-auto justify-center border border-black dark:border-white hover:invert dark:hover:invert-0">Start Session</button> )}
               </div>
           </main>
-      )}
+        )}
 
-      {/* --- VIEW 8: TEMPLATE SELECTION --- */}
-      {currentView === 'template-selection' && (
-          <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-y-auto md:overflow-hidden">
-              <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 pl-20 md:pl-48 bg-white/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
-                  <h1 className="font-title text-2xl md:text-3xl">Choose Frame</h1>
-                  <button onClick={handleToStickerEditor} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider">NEXT <ArrowRight size={12}/></button>
-              </div>
-              <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full justify-start md:justify-center items-center gap-4 md:gap-10 p-4 overflow-y-auto md:overflow-hidden pb-8">
-                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full relative order-1 md:order-1">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-2 md:mb-8">YOUR RESULT</span>
-                      <div className="transform scale-100 origin-center">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.18 : 0.18) : (selectedLayout === 'grid-4r' ? 0.25 : 0.25)} layoutConfig={getLayoutConfig(selectedLayout)} />
-                      </div>
-                  </div>
-                  <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[320px] h-auto md:h-full relative bg-gray-50/30 rounded-xl border border-gray-100/50 order-2 md:order-2 py-4 md:py-2 overflow-visible">
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 mb-3 md:absolute md:top-10">SELECT FRAME</span>
-                      <div className="w-full md:max-w-lg h-[275px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-8 md:gap-10 hide-scrollbar px-10 md:px-20 py-4 md:py-20">
-                          {stripTemplates.filter(t => t.layoutId === selectedLayout).map((tpl) => (
-                              <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
-                                  <div className="pointer-events-none border border-zinc-200 shadow-sm bg-white overflow-visible transform scale-75 md:scale-100 origin-center">
-                                       <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.1 : 0.13) : (selectedLayout === 'grid-4r' ? 0.1 : 0.15)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
-                                  </div>
-                                  <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500 max-w-[90px] leading-relaxed">{tpl.name}</span>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              </div>
-          </main>
-      )}
-
-      {/* --- VIEW 8.5: STICKER EDITOR --- */}
-      {currentView === 'sticker-editor' && (
-          <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-y-auto md:overflow-hidden" onClick={() => setActiveStickerId(null)}>
-              <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 pl-20 md:pl-48 bg-white z-40 sticky top-0 md:relative md:top-auto shadow-sm">
-                  <h1 className="font-title text-2xl md:text-3xl">Decorate Strip</h1>
-                  <div className="flex gap-2 md:gap-4">
-                      <button onClick={handleBackToTemplate} className="text-zinc-500 hover:text-black font-modern text-[10px] uppercase hidden md:block">Back</button>
-                      <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider shadow-md hover:shadow-lg transition-all">FINISH <Check size={12}/></button>
-                  </div>
-              </div>
-              
-              <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full overflow-y-auto md:overflow-hidden">
-                  {/* Kiri: Canvas */}
-                  <div className="flex-1 flex items-center justify-center bg-zinc-100 p-3 md:p-4 relative overflow-auto border-r border-zinc-200 hide-scrollbar cursor-crosshair min-h-[430px] md:min-h-0">
-                      <div className="transform origin-center flex items-center justify-center my-auto transition-transform duration-300" 
-                           onClick={(e) => e.stopPropagation()}>
-                          <AesthoStrip 
-                             template={selectedTemplate} 
-                             photos={selectedStripPhotos} 
-                             mode={selectedMode} 
-                             characterData={selectedCharacterData} 
-                             scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.18) : (selectedLayout === 'grid-4r' ? 0.35 : 0.25)} 
-                             layoutConfig={getLayoutConfig(selectedLayout)}
-                             isEditable={true} 
-                          />
-                      </div>
-                      
-                      {!activeStickerId && (
-                          <span className="absolute bottom-6 left-1/2 transform -translate-x-1/2 font-modern text-[10px] text-zinc-500 bg-white/90 px-6 py-2 rounded-full shadow-sm backdrop-blur-md pointer-events-none border border-zinc-200 uppercase tracking-widest hidden md:block">Click & Drag Stickers to Move</span>
-                      )}
-
-                      {/* Toolbar Kontrol Stiker Aktual */}
-                      {activeStickerId && (
-                          <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full shadow-2xl border border-zinc-200 flex items-center gap-1 md:gap-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => handleScaleSticker('down')} className="p-1.5 md:p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Perkecil"><ZoomOut size={18}/></button>
-                              <button onClick={() => handleScaleSticker('up')} className="p-1.5 md:p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Perbesar"><ZoomIn size={18}/></button>
-                              
-                              <div className="w-px h-6 bg-zinc-300 mx-1"></div>
-                              
-                              <button onClick={() => handleRotateSticker('left')} className="p-1.5 md:p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Putar Kiri"><RotateCcw size={18}/></button>
-                              <button onClick={() => handleRotateSticker('right')} className="p-1.5 md:p-2 text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-full transition-colors" title="Putar Kanan"><RotateCw size={18}/></button>
-                              
-                              <div className="w-px h-6 bg-zinc-300 mx-1"></div>
-                              
-                              <button onClick={handleDuplicateSticker} className="p-1.5 md:p-2 text-zinc-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="Duplikat"><Copy size={18}/></button>
-                              <button onClick={() => removeSticker(activeStickerId)} className="p-1.5 md:p-2 text-zinc-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Hapus"><Trash2 size={18}/></button>
-                          </div>
-                      )}
-                  </div>
-                  
-                  {/* Kanan: Sidebar Sticker Palette */}
-                  <div className="w-full md:w-[380px] bg-white h-[42dvh] md:h-full flex flex-col z-10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                      <div className="p-4 md:p-5 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
-                          <h3 className="font-modern text-xs font-bold tracking-[0.2em] text-zinc-800 uppercase">Stickers</h3>
-                          <button onClick={() => {setPlacedStickers([]); setActiveStickerId(null);}} className="text-[10px] font-modern tracking-widest text-red-500 hover:text-red-700 uppercase bg-red-50 px-3 py-1 rounded-full">Clear All</button>
-                      </div>
-                      
-                      <div className="flex-1 overflow-y-auto p-4 md:p-5 hide-scrollbar grid grid-cols-4 md:grid-cols-3 gap-3 md:gap-4 content-start bg-[#FDFDFD]">
-                          {/* Upload User Button */}
-                          <div onClick={() => stickerUploadRef.current?.click()} className="aspect-square rounded-2xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-zinc-50 hover:border-zinc-400 transition-all text-zinc-400 bg-white shadow-sm hover:shadow-md">
-                              <ImagePlus size={20} />
-                              <span className="text-[8px] font-modern uppercase tracking-wider">Upload</span>
-                              <input type="file" ref={stickerUploadRef} onChange={handleStickerUpload} className="hidden" accept="image/png, image/jpeg, image/gif, image/webp" />
-                          </div>
-                          
-                          {/* User Stickers */}
-                          {userStickers.map((url, i) => (
-                              <div key={`user-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white border border-zinc-100 p-2 md:p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
-                                  <img src={url} alt="User Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform" />
-                              </div>
-                          ))}
-
-                          {/* Default Theme Stickers */}
-                          {defaultStickers.map((url, i) => (
-                              <div key={`def-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white border border-zinc-100 p-2 md:p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
-                                  <img src={url} alt="Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform opacity-90 group-hover:opacity-100" />
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              </div>
-          </main>
-      )}
-
-      {/* --- VIEW 9: FINAL RESULT --- */}
-      {currentView === 'final-result' && (
-        <main className="relative z-30 flex flex-col h-[100dvh] md:h-full w-full bg-zinc-50 text-zinc-900 overflow-hidden">
-             <div className="w-full p-3 md:p-6 flex justify-between items-center gap-2 md:gap-3 border-b border-zinc-200 pl-16 md:pl-48 bg-white z-20 shadow-sm shrink-0">
+        {/* --- VIEW 6: CAMERA SESSION --- */}
+        {currentView === 'camera-session' && (
+          <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 dark:bg-[#0a0a0a] overflow-y-auto md:overflow-hidden justify-start md:justify-between">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white dark:hidden pointer-events-none"></div>
+              <div className="w-full p-4 md:p-6 z-20 flex justify-between items-center text-zinc-400 dark:text-zinc-500">
                   <div className="flex gap-4 items-center">
-                    <span className="font-title text-2xl md:text-3xl hidden md:block">Aestho.</span>
-                    <span className="font-modern text-[10px] tracking-widest text-zinc-400">FINAL RESULT</span>
+                      <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"><ArrowLeft size={20} /></button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tighter">Aestho.</span>
+                      <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden md:block"></div>
+                      <span className="font-modern text-[10px] uppercase tracking-[0.3em] hidden md:block">{currentLayoutData?.name}</span>
                   </div>
-                  <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
-                      <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2">BACK</button>
-                      
-                      {/* Tombol Share Baru */}
-                      <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-[9px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                          <Share size={12} className="hidden md:block"/> SHARE
-                      </button>
-
-                      <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
-                          {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
-                      </button>
-                      <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
-                          {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
-                      </button>
-                  </div>
+                  <button onClick={() => window.location.reload()} className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors opacity-50 hover:opacity-100"><RefreshCw size={16}/></button>
               </div>
-              
-              {/* HIDDEN RENDER: Untuk mendapatkan resolusi maksimal Canvas JPG */}
-              <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
-                  <AesthoStrip stripRef={staticStripRef} template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
-              </div>
-              
-              {/* HIDDEN RENDER: Untuk mendapatkan Frame kosong Video */}
-              <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
-                  <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
-              </div>
-
-              <div className="flex-1 min-h-0 flex flex-col md:flex-row w-full justify-start md:justify-center items-center gap-8 md:gap-16 px-4 pt-5 md:p-8 overflow-y-auto overflow-x-hidden bg-gray-50 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 relative z-0">
-                  <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400">STATIC RESULT</span>
-                      <div className="transform scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
+              <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-start md:justify-center px-3 py-2 md:p-4 gap-3 md:gap-4 relative z-10 min-h-0 md:h-full overflow-visible md:overflow-hidden">
+                  <div className="flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full shrink-0">
+                       <div className="mb-2 md:mb-4 text-center z-20">
+                          <span className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-mono text-black dark:text-white border border-zinc-200 dark:border-zinc-700 shadow-sm">SHOT {capturedPhotos.length} / {MAX_PHOTOS}</span>
+                      </div>
+                      <div className="relative shadow-2xl rounded-sm overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white w-full max-w-[92vw] md:max-w-none md:w-auto h-auto md:h-[65vh] max-h-[42dvh] sm:max-h-[48dvh] md:max-h-none aspect-[3/4] md:aspect-[4/3] flex-shrink-0 ring-1 ring-zinc-100 dark:ring-zinc-900">
+                          {useMockCamera ? ( <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-zinc-900 text-gray-500"><span className="font-mono text-xs">Mock Camera Active</span></div> ) : (
+                              <>
+                                  {isCameraLoading && <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-zinc-900 z-20"><Loader2 className="animate-spin text-zinc-300 dark:text-zinc-600"/></div>}
+                                  {!cameraError ? ( <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0" style={{ filter: currentFilter.style }} /> ) : (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 dark:bg-zinc-900 z-0">
+                                      <Camera size={32} />
+                                      <p className="font-modern text-[10px]">Camera Error</p>
+                                      <button onClick={() => setUseMockCamera(true)} className="mt-2 px-4 py-1 border border-zinc-300 dark:border-zinc-700 text-[10px] hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Use Mock Camera</button>
+                                  </div> )}
+                              </>
+                          )}
+                          {selectedMode === 'character' && (
+                          <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                              {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
+                                  <img crossOrigin="anonymous" src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
+                                      className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
+                                      style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` }} />
+                              )}
+                          </div>
+                          )}
+                          {isCountingDown && ( <div className="absolute top-8 right-10 z-100 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 dark:text-white drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-pulse">{countdownValue}</span></div> )}
                       </div>
                   </div>
-                  <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                      <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
-                      <div className="transform scale-100 origin-top">
-                        <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
-                      </div>
+                  <div className="flex md:flex-col flex-row w-full max-w-[92vw] md:max-w-none md:w-32 h-16 sm:h-20 md:h-[450px] bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
+                      {capturedPhotos.map((photo, i) => (
+                          <div key={i} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-sm relative bg-white flex-shrink-0">
+                               <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
+                               <CoverPhoto src={photo} className="w-full h-full z-0 relative" alt={`Captured ${i}`} />
+                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
+                          </div>
+                      ))}
+                      {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-zinc-300 dark:text-zinc-600 bg-white/50 dark:bg-zinc-800/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
                   </div>
               </div>
-        </main>
-      )}
-
-      {/* --- SHARE MODAL --- */}
-      {showShareModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 backdrop-blur-md transition-opacity">
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-zinc-100 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="p-6 relative text-center">
-                      <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-black bg-zinc-50 hover:bg-zinc-100 p-2 rounded-full transition-colors">
-                          <X size={16} />
-                      </button>
-                      <h2 className="font-title text-3xl text-black mb-1">Share Masterpiece</h2>
-                      <p className="font-modern text-[10px] text-zinc-500 uppercase tracking-widest mb-8">Pilih platform tujuan</p>
-
-                      <div className="grid grid-cols-2 gap-4">
-                          {/* Instagram */}
-                          <button onClick={() => handleShareToPlatform('Instagram')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                              )}
-                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Instagram</span>
-                          </button>
-
-                          {/* X (Twitter) */}
-                          <button onClick={() => handleShareToPlatform('X (Twitter)')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-black text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"></path><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path></svg>
-                              )}
-                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">X (Twitter)</span>
-                          </button>
-
-                          {/* Facebook */}
-                          <button onClick={() => handleShareToPlatform('Facebook')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-blue-600 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                              {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-                              )}
-                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Facebook</span>
-                          </button>
-
-                          {/* WhatsApp */}
-                          <button onClick={() => handleShareToPlatform('WhatsApp')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-green-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                               {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                               )}
-                              <span className="font-modern text-[10px] tracking-wider uppercase font-bold">WhatsApp</span>
-                          </button>
-                      </div>
-                  </div>
+              <div className="w-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:pb-8 md:pt-4 flex justify-center items-center gap-3 sm:gap-6 md:gap-12 z-20">
+                   <div className="flex flex-col items-center gap-2 md:gap-3">
+                       <div className="flex gap-2 md:gap-3 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md px-3 py-2 md:px-4 md:py-2 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                          {filters.map(f => ( <button key={f.id} onClick={() => setCurrentFilter(f)} className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white scale-110 shadow-md' : 'text-zinc-400 dark:text-zinc-500 border-transparent hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-white dark:hover:bg-zinc-800'}`}>{f.name[0]}</button> ))}
+                       </div>
+                       <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Tone</span>
+                   </div>
+                   <div className="flex flex-col items-center gap-2 md:gap-3">
+                       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept="image/*" />
+                       <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md flex items-center justify-center hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all text-zinc-600 dark:text-zinc-400 shadow-sm"><Upload size={16} className="md:w-5 md:h-5"/></button>
+                       <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Upload</span>
+                   </div>
+                   <div className="relative group">
+                       <button onClick={handleShutterClick} className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
+                          <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800 dark:border-zinc-200'} flex items-center justify-center`}>
+                              {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 dark:bg-white transition-transform duration-300 group-hover:scale-90"></div>}
+                          </div>
+                       </button>
+                   </div>
+                   <div className="flex flex-col items-center gap-2 md:gap-3">
+                       <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all font-mono text-xs md:text-sm text-zinc-700 dark:text-zinc-300 font-bold shadow-sm"><Clock size={14} className="opacity-70 md:w-4 md:h-4"/><span>{timerDuration}s</span></button>
+                       <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Delay</span>
+                   </div>
               </div>
-          </div>
-      )}
+          </main>
+        )}
 
-      {/* --- GLOBAL TOAST NOTIFICATION --- */}
-      {toastMessage && (
-          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 fade-in duration-300">
-              <div className="bg-zinc-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 font-sans text-xs border border-zinc-700 max-w-sm text-center md:max-w-md">
-                  <span className="flex-1 leading-relaxed">{toastMessage}</span>
-              </div>
-          </div>
-      )}
+        {/* --- VIEW 7: RESULT SELECTION --- */}
+        {currentView === 'result-selection' && (
+            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
+                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
+                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Select & Arrange</h1>
+                    <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">CHOOSE FRAME <ArrowRight size={12}/></button>
+                </div>
+                <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full p-4 md:p-8 gap-6 md:gap-12 justify-start md:justify-center items-center overflow-y-visible md:overflow-y-auto pb-10">
+                    <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
+                        <div className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 text-center">YOUR STRIP</div>
+                        
+                        {selectedLayout === 'grid-4r' ? (
+                            <div className="w-[180px] md:w-[240px] h-[270px] md:h-[360px] bg-white dark:ring-1 dark:ring-zinc-700 shadow-2xl p-2 border border-zinc-200 dark:border-transparent grid grid-cols-2 grid-rows-3 gap-2 mx-auto">
+                                {selectedStripPhotos.map((photoData, index) => (
+                                    <div key={index} className="bg-zinc-100 relative overflow-hidden group border border-zinc-100" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
+                                        {photoData ? (
+                                            <>
+                                              <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
+                                              {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
+                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
+                                              )}
+                                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-6 h-6 md:w-8 md:h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
+                                            </>
+                                        ) : ( <div className="w-full h-full flex items-center justify-center text-zinc-400 text-[10px] font-mono border-2 border-dashed border-zinc-300">{index + 1}</div> )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="w-[100px] md:w-[140px] h-[340px] md:h-[480px] bg-white dark:ring-1 dark:ring-zinc-700 shadow-2xl p-2 border border-zinc-200 dark:border-transparent flex flex-col gap-2 overflow-y-auto hide-scrollbar mx-auto">
+                                {selectedStripPhotos.map((photoData, index) => (
+                                    <div key={index} className="flex-1 bg-zinc-100 relative overflow-hidden group border border-zinc-100 flex-shrink-0" draggable={!!photoData} onDragStart={(e) => handleDragStart(e, index)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, index)}>
+                                        {photoData ? (
+                                            <>
+                                              <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
+                                              {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
+                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
+                                              )}
+                                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
+                                            </>
+                                        ) : ( <div className="w-full h-full flex items-center justify-center text-zinc-400 text-[10px] font-mono border-2 border-dashed border-zinc-300">{index + 1}</div> )}
+                                    </div>
+                                ))}
+                                <div className="mt-auto text-center font-title text-[10px] text-black pt-1">Aestho.</div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-4 w-full md:max-w-4xl h-auto md:h-full overflow-y-auto">
+                        <div className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 text-center md:text-left">CAPTURED SHOTS</div>
+                        <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pr-0 md:pr-2 pb-20">
+                            {capturedPhotos.map((photo, i) => {
+                                const isSelected = selectedStripPhotos.some(p => p && p.originalIndex === i);
+                                return (
+                                    <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black dark:hover:ring-white hover:shadow-lg'}`}>
+                                        <CoverPhoto src={photo} className="w-full h-full" alt={`Shot ${i}`} />
+                                        {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
+                                        {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10 dark:bg-white/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
+                                        <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        )}
 
+        {/* --- VIEW 8: TEMPLATE SELECTION --- */}
+        {currentView === 'template-selection' && (
+            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
+                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-20 md:pl-48 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
+                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Choose Frame</h1>
+                    <button onClick={handleToStickerEditor} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">NEXT <ArrowRight size={12}/></button>
+                </div>
+                <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full justify-start md:justify-center items-center gap-4 md:gap-10 p-4 overflow-y-auto md:overflow-hidden pb-8">
+                    <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full relative order-1 md:order-1">
+                        <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 md:mb-8">YOUR RESULT</span>
+                        <div className="transform scale-100 origin-center">
+                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.18 : 0.18) : (selectedLayout === 'grid-4r' ? 0.25 : 0.25)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        </div>
+                    </div>
+                    <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[320px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 py-4 md:py-2 overflow-visible">
+                        <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 mb-3 md:absolute md:top-10">SELECT FRAME</span>
+                        <div className="w-full md:max-w-lg h-[275px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-8 md:gap-10 hide-scrollbar px-10 md:px-20 py-4 md:py-20">
+                            {stripTemplates.filter(t => t.layoutId === selectedLayout).map((tpl) => (
+                                <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
+                                    <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-75 md:scale-100 origin-center">
+                                         <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.1 : 0.13) : (selectedLayout === 'grid-4r' ? 0.1 : 0.15)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
+                                    </div>
+                                    <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500 dark:text-zinc-400 max-w-[90px] leading-relaxed">{tpl.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        )}
+
+        {/* --- VIEW 8.5: STICKER EDITOR --- */}
+        {currentView === 'sticker-editor' && (
+            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden" onClick={() => setActiveStickerId(null)}>
+                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-20 md:pl-48 bg-white dark:bg-[#111] z-40 sticky top-0 md:relative md:top-auto shadow-sm">
+                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Decorate Strip</h1>
+                    <div className="flex gap-2 md:gap-4">
+                        <button onClick={handleBackToTemplate} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] uppercase hidden md:block transition-colors">Back</button>
+                        <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider shadow-md hover:shadow-lg transition-all">FINISH <Check size={12}/></button>
+                    </div>
+                </div>
+                
+                <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full overflow-y-auto md:overflow-hidden">
+                    {/* Kiri: Canvas */}
+                    <div className="flex-1 flex items-center justify-center bg-zinc-100 dark:bg-[#050505] p-3 md:p-4 relative overflow-auto border-r border-zinc-200 dark:border-zinc-800 hide-scrollbar cursor-crosshair min-h-[430px] md:min-h-0">
+                        <div className="transform origin-center flex items-center justify-center my-auto transition-transform duration-300" 
+                             onClick={(e) => e.stopPropagation()}>
+                            <AesthoStrip 
+                               template={selectedTemplate} 
+                               photos={selectedStripPhotos} 
+                               mode={selectedMode} 
+                               characterData={selectedCharacterData} 
+                               scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.18) : (selectedLayout === 'grid-4r' ? 0.35 : 0.25)} 
+                               layoutConfig={getLayoutConfig(selectedLayout)}
+                               isEditable={true} 
+                            />
+                        </div>
+                        
+                        {!activeStickerId && (
+                            <span className="absolute bottom-6 left-1/2 transform -translate-x-1/2 font-modern text-[10px] text-zinc-500 dark:text-zinc-400 bg-white/90 dark:bg-zinc-800/90 px-6 py-2 rounded-full shadow-sm backdrop-blur-md pointer-events-none border border-zinc-200 dark:border-zinc-700 uppercase tracking-widest hidden md:block">Click & Drag Stickers to Move</span>
+                        )}
+
+                        {/* Toolbar Kontrol Stiker Aktual */}
+                        {activeStickerId && (
+                            <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full shadow-2xl border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 md:gap-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => handleScaleSticker('down')} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full transition-colors" title="Perkecil"><ZoomOut size={18}/></button>
+                                <button onClick={() => handleScaleSticker('up')} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full transition-colors" title="Perbesar"><ZoomIn size={18}/></button>
+                                
+                                <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-600 mx-1"></div>
+                                
+                                <button onClick={() => handleRotateSticker('left')} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full transition-colors" title="Putar Kiri"><RotateCcw size={18}/></button>
+                                <button onClick={() => handleRotateSticker('right')} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full transition-colors" title="Putar Kanan"><RotateCw size={18}/></button>
+                                
+                                <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-600 mx-1"></div>
+                                
+                                <button onClick={handleDuplicateSticker} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors" title="Duplikat"><Copy size={18}/></button>
+                                <button onClick={() => removeSticker(activeStickerId)} className="p-1.5 md:p-2 text-zinc-600 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors" title="Hapus"><Trash2 size={18}/></button>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Kanan: Sidebar Sticker Palette */}
+                    <div className="w-full md:w-[380px] bg-white dark:bg-[#111] h-[42dvh] md:h-full flex flex-col z-10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-4 md:p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-[#0a0a0a]">
+                            <h3 className="font-modern text-xs font-bold tracking-[0.2em] text-zinc-800 dark:text-zinc-100 uppercase">Stickers</h3>
+                            <button onClick={() => {setPlacedStickers([]); setActiveStickerId(null);}} className="text-[10px] font-modern tracking-widest text-red-500 hover:text-red-700 dark:hover:text-red-400 uppercase bg-red-50 dark:bg-red-950/30 px-3 py-1 rounded-full transition-colors">Clear All</button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 md:p-5 hide-scrollbar grid grid-cols-4 md:grid-cols-3 gap-3 md:gap-4 content-start bg-[#FDFDFD] dark:bg-[#111]">
+                            {/* Upload User Button */}
+                            <div onClick={() => stickerUploadRef.current?.click()} className="aspect-square rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-500 transition-all text-zinc-400 dark:text-zinc-500 bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md">
+                                <ImagePlus size={20} />
+                                <span className="text-[8px] font-modern uppercase tracking-wider">Upload</span>
+                                <input type="file" ref={stickerUploadRef} onChange={handleStickerUpload} className="hidden" accept="image/png, image/jpeg, image/gif, image/webp" />
+                            </div>
+                            
+                            {/* User Stickers */}
+                            {userStickers.map((url, i) => (
+                                <div key={`user-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 p-2 md:p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
+                                    <img src={url} alt="User Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform" />
+                                </div>
+                            ))}
+
+                            {/* Default Theme Stickers */}
+                            {defaultStickers.map((url, i) => (
+                                <div key={`def-${i}`} onClick={() => handleAddSticker(url)} className="aspect-square rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 p-2 md:p-3 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex items-center justify-center group relative overflow-hidden">
+                                    <img src={url} alt="Sticker" className="w-full h-full object-contain drop-shadow-sm group-hover:scale-110 transition-transform opacity-90 group-hover:opacity-100" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        )}
+
+        {/* --- VIEW 9: FINAL RESULT --- */}
+        {currentView === 'final-result' && (
+          <main className="relative z-30 flex flex-col h-[100dvh] md:h-full w-full overflow-hidden">
+               <div className="w-full p-3 md:p-6 flex justify-between items-center gap-2 md:gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-16 md:pl-48 bg-white dark:bg-[#111] z-20 shadow-sm shrink-0">
+                    <div className="flex gap-4 items-center">
+                      <span className="font-title text-2xl md:text-3xl hidden md:block text-zinc-900 dark:text-zinc-100">Aestho.</span>
+                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500">FINAL RESULT</span>
+                    </div>
+                    <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
+                        <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2 transition-colors">BACK</button>
+                        
+                        {/* Tombol Share */}
+                        <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white rounded-full text-[9px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                            <Share size={12} className="hidden md:block"/> SHARE
+                        </button>
+
+                        <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                            {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
+                        </button>
+                        <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                            {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
+                        </button>
+                    </div>
+                </div>
+                
+                {/* HIDDEN RENDER */}
+                <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                    <AesthoStrip stripRef={staticStripRef} template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
+                </div>
+                
+                {/* HIDDEN RENDER */}
+                <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                    <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
+                </div>
+
+                <div className="flex-1 min-h-0 flex flex-col md:flex-row w-full justify-start md:justify-center items-center gap-8 md:gap-16 px-4 pt-5 md:p-8 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#050505] pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 relative z-0">
+                    <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
+                        <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500">STATIC RESULT</span>
+                        <div className="transform scale-100 origin-top">
+                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        </div>
+                    </div>
+                    <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
+                        <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
+                        <div className="transform scale-100 origin-top">
+                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* === TOMBOL DEVELOPER === */}
+                <a 
+                    href="https://www.instagram.com/dzev.c/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
+                >
+                    <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
+                    <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Dev: @dzev.c</span>
+                </a>
+          </main>
+        )}
+
+        {/* --- SHARE MODAL --- */}
+        {showShareModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-black/60 backdrop-blur-md transition-opacity">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-zinc-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-6 relative text-center">
+                        <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-black dark:hover:text-white bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 p-2 rounded-full transition-colors">
+                            <X size={16} />
+                        </button>
+                        <h2 className="font-title text-3xl text-black dark:text-white mb-1">Share Masterpiece</h2>
+                        <p className="font-modern text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-8">Pilih platform tujuan</p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Instagram */}
+                            <button onClick={() => handleShareToPlatform('Instagram')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                                )}
+                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Instagram</span>
+                            </button>
+
+                            {/* X (Twitter) */}
+                            <button onClick={() => handleShareToPlatform('X (Twitter)')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-black dark:bg-zinc-800 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"></path><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path></svg>
+                                )}
+                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">X (Twitter)</span>
+                            </button>
+
+                            {/* Facebook */}
+                            <button onClick={() => handleShareToPlatform('Facebook')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-blue-600 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                                )}
+                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Facebook</span>
+                            </button>
+
+                            {/* WhatsApp */}
+                            <button onClick={() => handleShareToPlatform('WhatsApp')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-green-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
+                                 {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
+                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                 )}
+                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- GLOBAL TOAST NOTIFICATION --- */}
+        {toastMessage && (
+            <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 fade-in duration-300">
+                <div className="bg-zinc-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 font-sans text-xs border border-zinc-700 max-w-sm text-center md:max-w-md">
+                    <span className="flex-1 leading-relaxed">{toastMessage}</span>
+                </div>
+            </div>
+        )}
+      </div>
     </div>
   );
 };
