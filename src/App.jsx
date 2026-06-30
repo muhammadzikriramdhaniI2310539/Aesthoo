@@ -45,6 +45,16 @@ const SummaryResultPage = () => {
   const resultId = getSummaryIdFromPath();
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const savedTheme = window.localStorage.getItem('aestho-theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+
+    document.documentElement.classList.toggle('dark', shouldUseDark);
+  }, []);
+
+  useEffect(() => {
     const loadResult = async () => {
       if (!resultId) {
         setResultError('Link hasil tidak valid.');
@@ -113,47 +123,115 @@ const SummaryResultPage = () => {
   const mp4Url = result.video_mp4_url || toCloudinaryMp4Url(result.video_url);
 
   return (
-    <main className="min-h-screen bg-[#f7f5f2] text-black flex flex-col items-center justify-center p-4 md:p-8 overflow-hidden relative">
-      <div className="absolute top-0 left-0 w-64 h-64 bg-pink-200/40 blur-3xl rounded-full -translate-x-20 -translate-y-20" />
-      <div className="absolute bottom-0 right-0 w-72 h-72 bg-blue-200/50 blur-3xl rounded-full translate-x-20 translate-y-20" />
+    <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex flex-col items-center justify-center p-4 md:p-8 overflow-hidden relative transition-colors duration-500">
+      {/* Background Decorative Blurs */}
+      <div className="absolute top-0 left-0 w-72 h-72 bg-pink-200/40 dark:bg-pink-500/10 blur-3xl rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-200/40 dark:bg-blue-500/10 blur-3xl rounded-full translate-x-20 translate-y-20 pointer-events-none" />
 
-      <section className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-5 md:gap-8 items-center">
-        <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] md:rounded-[2.5rem] border border-white shadow-2xl p-6 md:p-8">
-          <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 uppercase mb-3">Aestho Photobooth</p>
-          <h1 className="font-title text-4xl md:text-6xl leading-none mb-4">Thanks for using Aestho ✨</h1>
-          <p className="text-sm md:text-base text-zinc-500 leading-relaxed mb-6">
-            Your photobooth result is ready. Save your JPG strip, download the Live Moment, or share this page with your friends.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <a href={result.photo_url} target="_blank" rel="noopener noreferrer" download="Aestho-Strip.jpg" className="text-center px-5 py-3 rounded-full bg-black text-white text-[10px] font-mono tracking-widest hover:opacity-80 transition-opacity">DOWNLOAD JPG</a>
-
-            {mp4Url && (
-              <a href={mp4Url} target="_blank" rel="noopener noreferrer" download="Aestho-Live-Moment.mp4" className="text-center px-5 py-3 rounded-full bg-black text-white text-[10px] font-mono tracking-widest hover:opacity-80 transition-opacity">DOWNLOAD MP4</a>
-            )}
-
-            <button onClick={handleCopyLink} className="px-5 py-3 rounded-full bg-white border border-zinc-200 text-black text-[10px] font-mono tracking-widest hover:bg-zinc-50 transition-colors">COPY LINK</button>
-            <a href="/" className="text-center px-5 py-3 rounded-full bg-zinc-100 text-black text-[10px] font-mono tracking-widest hover:bg-zinc-200 transition-colors">MAKE ANOTHER</a>
+      <section className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8 md:gap-12 items-center">
+        {/* Left Panel: Text & Actions */}
+        <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-[2rem] md:rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-2xl p-8 md:p-10 flex flex-col justify-center">
+          <div className="mb-6">
+            <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase mb-3 flex items-center gap-2">
+              <Star className="w-3 h-3" /> Aestho Photobooth
+            </p>
+           <h1
+                className="text-6xl md:text-7xl leading-[0.95] mb-5 text-zinc-900 dark:text-white font-normal"
+            style={{ fontFamily: "'Great Vibes', cursive" }}
+            >
+            Your Masterpiece <br />
+            is Ready 
+            </h1>
+            <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Save your captured moments. Download your high-res JPG strip, get the Live Moment video, or share this page directly with your friends.
+            </p>
           </div>
 
-          <div className="mt-6 pt-5 border-t border-zinc-100">
-            <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Result ID: {result.id}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <a
+              href={result.photo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              download="Aestho-Strip.jpg"
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
+            >
+              <Download className="w-4 h-4" /> STATIC JPG
+            </a>
+
+            {mp4Url && (
+              <a
+                href={mp4Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download="Aestho-Live-Moment.mp4"
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
+              >
+                <Film className="w-4 h-4" /> LIVE MOMENT
+              </a>
+            )}
+
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-black dark:text-white text-[10px] font-modern font-bold tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 transition-all shadow-sm"
+            >
+              <Copy className="w-4 h-4" /> COPY LINK
+            </button>
+            
+            <a
+              href="/"
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white text-[10px] font-modern font-bold tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" /> NEW SESSION
+            </a>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1">
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tracking-widest uppercase">
+              Result ID: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{result.id}</span>
+            </p>
             {result.template_name && (
-              <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase mt-1">Frame: {result.template_name}</p>
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tracking-widest uppercase">
+                Frame Style: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{result.template_name}</span>
+              </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-[2rem] border border-white shadow-2xl p-4 flex flex-col gap-3">
-            <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 text-center">STATIC JPG</p>
-            <img src={result.photo_url} alt="Aestho Photobooth Result" className="max-h-[70vh] w-auto mx-auto rounded-[1.5rem] shadow-lg bg-white" />
+        {/* Right Panel: Display Results */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          {/* JPG Preview */}
+          <div className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-xl p-5 flex flex-col gap-4 transform transition-transform duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <ImageIcon className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
+              <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-500 dark:text-zinc-400 text-center font-bold">STATIC RESULT</p>
+            </div>
+            <div className="bg-white dark:bg-zinc-950 p-2 rounded-[2rem] shadow-inner border border-zinc-100 dark:border-zinc-800">
+              <img
+                src={result.photo_url}
+                alt="Aestho Photobooth Result"
+                className="max-h-[60vh] w-auto mx-auto rounded-[1.5rem] object-contain"
+              />
+            </div>
           </div>
 
+          {/* MP4 Preview */}
           {result.video_url && (
-            <div className="bg-white rounded-[2rem] border border-white shadow-2xl p-4 flex flex-col gap-3">
-              <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 text-center">LIVE MOMENT</p>
-              <video src={result.video_url} controls playsInline className="w-full rounded-[1.5rem] shadow-lg bg-black" />
+            <div className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-xl p-5 flex flex-col gap-4 transform transition-transform duration-300 hover:-translate-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-500 dark:text-zinc-400 text-center font-bold">LIVE MOMENT</p>
+              </div>
+              <div className="bg-black p-2 rounded-[2rem] shadow-inner border border-zinc-800 relative overflow-hidden flex-1 flex flex-col">
+                <video
+                  src={result.video_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                  className="w-full h-full max-h-[60vh] rounded-[1.5rem] object-contain"
+                />
+              </div>
             </div>
           )}
         </div>
