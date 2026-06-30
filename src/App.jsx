@@ -811,9 +811,9 @@ const App = () => {
 
   const getVideoRenderScale = () => {
       if (typeof window === 'undefined') return 1;
-      // Live Moment di HP jauh lebih ringan kalau render canvas tidak full 1200x1800.
-      if (window.innerWidth < 768) return selectedLayout === 'grid-4r' ? 0.65 : 0.75;
-      return 1;
+      // Live Moment dibuat lebih ringan supaya video tidak patah-patah, terutama di HP.
+      if (window.innerWidth < 768) return selectedLayout === 'grid-4r' ? 0.48 : 0.62;
+      return selectedLayout === 'grid-4r' ? 0.75 : 0.9;
   };
 
   const videoRef = useRef(null);
@@ -1646,6 +1646,10 @@ const App = () => {
           return loadCanvasImage(overlayUrl);
       }));
 
+      // Frame template harus digambar ulang setelah foto/video dan karakter.
+      // Kalau tidak, foto/video akan menindih frame saat Live Moment dirender ke canvas.
+      const frameOverlayImage = await loadCanvasImage(selectedTemplate?.overlayUrl);
+
       const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
           const img = await loadCanvasImage(stk.url);
           return img ? { img, ...stk } : null;
@@ -1657,8 +1661,10 @@ const App = () => {
       recordCanvas.width = Math.round(config.W * videoRenderScale);
       recordCanvas.height = Math.round(config.H * videoRenderScale);
 
-      const ctx = recordCanvas.getContext('2d');
-      const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 24 : 30);
+      const ctx = recordCanvas.getContext('2d', { alpha: false });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 20 : 24);
 
       const selectedMimeType = getSupportedRecorderMimeType();
 
@@ -1776,6 +1782,13 @@ const App = () => {
                   ctx.drawImage(img, ox, oy, ow, oh);
                   ctx.restore();
               }
+          }
+
+          if (frameOverlayImage) {
+              ctx.save();
+              ctx.filter = 'none';
+              ctx.drawImage(frameOverlayImage, 0, 0, config.W, config.H);
+              ctx.restore();
           }
 
           stickersImages.forEach((stk) => {
@@ -2044,13 +2057,12 @@ const App = () => {
                     )}
 
                     {template.overlayUrl && (
-                        <div
-                            className="absolute inset-0 z-30 pointer-events-none"
-                            style={{
-                                backgroundImage: `url(${template.overlayUrl})`,
-                                backgroundSize: '100% 100%',
-                                backgroundRepeat: 'no-repeat'
-                            }}
+                        <img
+                            crossOrigin="anonymous"
+                            src={template.overlayUrl}
+                            alt="Frame overlay"
+                            className="absolute inset-0 z-30 pointer-events-none w-full h-full"
+                            style={{ objectFit: 'fill' }}
                         />
                     )}
 
@@ -2628,12 +2640,36 @@ const App = () => {
                 )}
 
                 {/* HIDDEN RENDER */}
-                <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '1px',
+                        height: '1px',
+                        overflow: 'visible',
+                        pointerEvents: 'none',
+                        zIndex: -9999
+                    }}
+                >
                     <AesthoStrip stripRef={staticStripRef} template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
                 </div>
                 
                 {/* HIDDEN RENDER */}
-                <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, pointerEvents: 'none' }}>
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '1px',
+                        height: '1px',
+                        overflow: 'visible',
+                        pointerEvents: 'none',
+                        zIndex: -9999
+                    }}
+                >
                     <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
                 </div>
 
