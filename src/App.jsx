@@ -12,6 +12,7 @@ const supabase = supabaseUrl && supabaseAnonKey
 
 const SHINHLIN_INSTAGRAM_URL = 'https://www.instagram.com/shinhlin/';
 const TRAKTEER_SUPPORT_URL = 'https://trakteer.id/dzev';
+const REQUEST_CHARACTER_URL = 'https://aesthoo.carrd.co/';
 
 const isShinhlinTemplateName = (templateName = '') => {
   const normalizedName = String(templateName || '').toLowerCase();
@@ -2658,15 +2659,29 @@ const App = () => {
 
                         <span className="hidden sm:block w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
 
-                        <a
-                            href={TRAKTEER_SUPPORT_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 bg-zinc-950 text-white dark:bg-white dark:text-black hover:opacity-90 transition-all duration-300 shadow-sm"
-                        >
-                            <Heart size={13} className="fill-current" />
-                            <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Support Aestho</span>
-                        </a>
+                        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-[190px]">
+                            <a
+                                href={REQUEST_CHARACTER_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-2 bg-white/70 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-transparent transition-all duration-300 shadow-sm"
+                                title="Request a new character for Aestho"
+                            >
+                                <Sparkles size={13} className="text-zinc-400 group-hover:text-yellow-300 dark:group-hover:text-yellow-500 transition-colors" />
+                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Request Character</span>
+                            </a>
+
+                            <a
+                                href={TRAKTEER_SUPPORT_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-2 bg-zinc-950 text-white dark:bg-white dark:text-black hover:opacity-90 transition-all duration-300 shadow-sm"
+                                title="Support Aestho on Trakteer"
+                            >
+                                <Heart size={13} className="fill-current" />
+                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Support Aestho</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
           </main>
