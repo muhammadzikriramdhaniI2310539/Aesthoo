@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Share, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram, QrCode } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,6 +11,7 @@ const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 const SHINHLIN_INSTAGRAM_URL = 'https://www.instagram.com/shinhlin/';
+const TRAKTEER_SUPPORT_URL = 'https://trakteer.id/dzev';
 
 const isShinhlinTemplateName = (templateName = '') => {
   const normalizedName = String(templateName || '').toLowerCase();
@@ -781,10 +782,8 @@ const App = () => {
   const [isDownloadingJPG, setIsDownloadingJPG] = useState(false);
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
 
-  // Notification & Share State
+  // Notification State
   const [toastMessage, setToastMessage] = useState(null);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [isSharingProcess, setIsSharingProcess] = useState(false);
 
   // QR Result State
   const [qrResultUrl, setQrResultUrl] = useState('');
@@ -840,7 +839,7 @@ const App = () => {
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
-  const showSelectedShinhlinCredit = isShinhlinTemplateName(selectedTemplate?.name);
+  const showSelectedShinhlinCredit = true;
 
   // Deteksi mobile hanya untuk mengatur skala preview/editor.
   // Desktop tetap memakai ukuran lama karena isMobile = false di layar md ke atas.
@@ -1527,75 +1526,6 @@ const App = () => {
           showToast(err.message || 'Gagal memproses JPG. Coba tunggu semua gambar tampil dulu lalu tekan lagi.');
       } finally {
           setIsDownloadingJPG(false);
-      }
-  };
-
-  // --- SHARE LOGIC ---
-  const handleShareToPlatform = async (platformName) => {
-      if (!window.html2canvas || !staticStripRef.current) {
-          showToast("Sistem sedang menyiapkan gambar, silakan tunggu...");
-          return;
-      }
-      
-      setIsSharingProcess(true);
-      
-      try {
-          await Promise.all([
-              ...selectedStripPhotos.map((photoData) => loadCanvasImage(photoData?.url)),
-              loadCanvasImage(selectedTemplate?.overlayUrl),
-              ...placedStickers.map((sticker) => loadCanvasImage(sticker.url))
-          ]);
-          await waitForStripAssets(staticStripRef.current);
-
-          // Render the high-res canvas first
-          const canvas = await window.html2canvas(staticStripRef.current, {
-              useCORS: true,
-              allowTaint: true,
-              scale: getExportScale(), 
-              backgroundColor: null,
-          });
-
-          // Convert to blob for sharing
-          canvas.toBlob(async (blob) => {
-              if (!blob) {
-                  showToast("Gagal merender gambar.");
-                  setIsSharingProcess(false);
-                  return;
-              }
-
-              const file = new File([blob], 'Aestho-Masterpiece.jpg', { type: 'image/jpeg' });
-              
-              const shareData = {
-                  files: [file],
-                  title: 'My Aestho Photostrip',
-                  text: `Check out my awesome photostrip created with Aestho! 📸✨ #AesthoApp #${platformName}`
-              };
-
-              // Check if browser supports Web Share API with files
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                  try {
-                      await navigator.share(shareData);
-                      showToast(`Berhasil membuka menu share untuk ${platformName}!`);
-                      setShowShareModal(false);
-                  } catch (err) {
-                      // AbortError is typical when user cancels the native share dialog
-                      if (err.name !== 'AbortError') {
-                          console.error("Share failed:", err);
-                          showToast(`Gagal membagikan langsung. Silakan unduh gambar untuk dibagikan ke ${platformName}.`);
-                      }
-                  }
-              } else {
-                  // Fallback for browsers that don't support file sharing
-                  showToast(`Browser ini tidak mendukung share langsung. Unduh gambar dan bagikan manual ke ${platformName}.`);
-                  setShowShareModal(false);
-              }
-              setIsSharingProcess(false);
-          }, 'image/jpeg', 0.9);
-
-      } catch (err) {
-          console.error("Failed to prepare share", err);
-          showToast("Terjadi kesalahan saat memproses gambar.");
-          setIsSharingProcess(false);
       }
   };
 
@@ -2556,11 +2486,6 @@ const App = () => {
                     <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
                         <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2 transition-colors">BACK</button>
                         
-                        {/* Tombol Share */}
-                        <button onClick={() => setShowShareModal(true)} className="flex items-center gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white rounded-full text-[9px] md:text-xs font-mono hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                            <Share size={12} className="hidden md:block"/> SHARE
-                        </button>
-
                         <button
                             onClick={handleGenerateQRCode}
                             disabled={isGeneratingQR}
@@ -2701,79 +2626,50 @@ const App = () => {
                 </div>
 
                 {/* === CREDIT FINAL RESULT === */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 flex flex-wrap items-center justify-center md:justify-end gap-2 pointer-events-none px-3">
-                    <a 
-                        href="https://www.instagram.com/dzev.c/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
-                    >
-                        <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
-                        <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Dev: @dzev.c</span>
-                    </a>
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 pointer-events-none px-3 w-full md:w-auto flex justify-center md:justify-end">
+                    <div className="pointer-events-auto max-w-[calc(100vw-1.5rem)] rounded-[1.75rem] md:rounded-full bg-white/75 dark:bg-zinc-950/70 backdrop-blur-2xl border border-white/70 dark:border-zinc-800/80 shadow-[0_18px_60px_rgba(0,0,0,0.12)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.45)] p-1.5 flex flex-wrap items-center justify-center gap-1">
+                        <a 
+                            href="https://www.instagram.com/dzev.c/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
+                        >
+                            <Instagram size={13} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
+                            <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">
+                                <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Dev</span> @dzev.c
+                            </span>
+                        </a>
 
-                    {showSelectedShinhlinCredit && (
+                        <span className="hidden sm:block w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
+
+                        {showSelectedShinhlinCredit && (
+                            <a
+                                href={SHINHLIN_INSTAGRAM_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
+                            >
+                                <Instagram size={13} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
+                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">
+                                    <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Artist</span> @shinhlin
+                                </span>
+                            </a>
+                        )}
+
+                        <span className="hidden sm:block w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
+
                         <a
-                            href={SHINHLIN_INSTAGRAM_URL}
+                            href={TRAKTEER_SUPPORT_URL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
+                            className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 bg-zinc-950 text-white dark:bg-white dark:text-black hover:opacity-90 transition-all duration-300 shadow-sm"
                         >
-                            <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
-                            <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Artist: @shinhlin</span>
+                            <Heart size={13} className="fill-current" />
+                            <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Support Aestho</span>
                         </a>
-                    )}
-                </div>
-          </main>
-        )}
-
-        {/* --- SHARE MODAL --- */}
-        {showShareModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-black/60 backdrop-blur-md transition-opacity">
-                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-zinc-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="p-6 relative text-center">
-                        <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-black dark:hover:text-white bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 p-2 rounded-full transition-colors">
-                            <X size={16} />
-                        </button>
-                        <h2 className="font-title text-3xl text-black dark:text-white mb-1">Share Masterpiece</h2>
-                        <p className="font-modern text-[10px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-8">Pilih platform tujuan</p>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Instagram */}
-                            <button onClick={() => handleShareToPlatform('Instagram')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                                )}
-                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Instagram</span>
-                            </button>
-
-                            {/* X (Twitter) */}
-                            <button onClick={() => handleShareToPlatform('X (Twitter)')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-black dark:bg-zinc-800 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"></path><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"></path></svg>
-                                )}
-                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">X (Twitter)</span>
-                            </button>
-
-                            {/* Facebook */}
-                            <button onClick={() => handleShareToPlatform('Facebook')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-blue-600 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                                {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-                                )}
-                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">Facebook</span>
-                            </button>
-
-                            {/* WhatsApp */}
-                            <button onClick={() => handleShareToPlatform('WhatsApp')} disabled={isSharingProcess} className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-green-500 text-white hover:scale-105 transition-transform shadow-md disabled:opacity-50">
-                                 {isSharingProcess ? <Loader2 className="animate-spin" size={28}/> : (
-                                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                                 )}
-                                <span className="font-modern text-[10px] tracking-wider uppercase font-bold">WhatsApp</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
-            </div>
+          </main>
         )}
 
         {/* --- GLOBAL TOAST NOTIFICATION --- */}
