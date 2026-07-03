@@ -819,10 +819,15 @@ const App = () => {
   };
 
   const getVideoRenderScale = () => {
-      if (typeof window === 'undefined') return 1;
-      // Live Moment dibuat lebih ringan supaya video tidak patah-patah, terutama di HP.
-      if (window.innerWidth < 768) return selectedLayout === 'grid-4r' ? 0.48 : 0.62;
-      return selectedLayout === 'grid-4r' ? 0.75 : 0.9;
+      if (typeof window === 'undefined') return 0.55;
+
+      // Dibuat lebih ringan supaya export Live Moment tidak error/patah-patah.
+      // Video tetap terlihat bagus, tapi canvas tidak terlalu berat untuk HP.
+      if (window.innerWidth < 768) {
+          return selectedLayout === 'grid-4r' ? 0.36 : 0.48;
+      }
+
+      return selectedLayout === 'grid-4r' ? 0.52 : 0.62;
   };
 
   const videoRef = useRef(null);
@@ -1478,13 +1483,17 @@ const App = () => {
 
   const getSupportedRecorderMimeType = () => {
       if (!window.MediaRecorder) return '';
+
+      // WebM dibuat prioritas untuk Chrome/Edge/Android karena lebih stabil di MediaRecorder.
+      // MP4 tetap disiapkan sebagai fallback, terutama untuk Safari.
       const mimeTypes = [
-          'video/mp4;codecs=h264',
-          'video/mp4',
-          'video/webm;codecs=vp9',
           'video/webm;codecs=vp8',
-          'video/webm'
+          'video/webm;codecs=vp9',
+          'video/webm',
+          'video/mp4;codecs=h264',
+          'video/mp4'
       ];
+
       return mimeTypes.find((type) => MediaRecorder.isTypeSupported(type)) || '';
   };
 
@@ -1532,14 +1541,18 @@ const App = () => {
 
   const createLiveVideoBlob = async () => {
       if (!window.html2canvas || !baseStripRef.current) {
-          throw new Error('Sistem pemroses video belum siap. Coba tunggu sebentar.');
+          throw new Error('Sistem pemroses video belum siap. Coba tunggu sebentar lalu ulangi lagi.');
       }
 
       if (!HTMLCanvasElement.prototype.captureStream || !window.MediaRecorder) {
-          throw new Error('Browser ini belum mendukung export Live Moment. Coba pakai Chrome Android atau Safari terbaru.');
+          throw new Error('Browser ini belum mendukung export Live Moment. Coba pakai Chrome Android, Edge, atau Safari terbaru.');
       }
 
       const config = getLayoutConfig(selectedLayout);
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const VIDEO_DURATION_MS = 3300;
+      const TARGET_FPS = window.innerWidth < 768 ? 12 : 15;
+      const FRAME_INTERVAL = Math.round(1000 / TARGET_FPS);
 
       await waitForStripAssets(baseStripRef.current);
 
@@ -1570,13 +1583,17 @@ const App = () => {
               v.loop = true;
               v.playsInline = true;
               v.preload = 'auto';
-              v.crossOrigin = 'anonymous';
 
               const finish = () => resolve(v);
+              v.onloadedmetadata = finish;
               v.onloadeddata = finish;
               v.oncanplay = finish;
               v.onerror = () => resolve(null);
-              setTimeout(() => resolve(v.readyState >= 2 ? v : null), 2200);
+
+              setTimeout(() => {
+                  resolve(v.readyState >= 1 ? v : null);
+              }, 1800);
+
               v.load();
           });
       }));
@@ -1587,8 +1604,7 @@ const App = () => {
           return loadCanvasImage(overlayUrl);
       }));
 
-      // Frame template harus digambar ulang setelah foto/video dan karakter.
-      // Kalau tidak, foto/video akan menindih frame saat Live Moment dirender ke canvas.
+      // Frame template digambar ulang paling atas agar frame tidak ketutup foto/video.
       const frameOverlayImage = await loadCanvasImage(selectedTemplate?.overlayUrl);
 
       const stickersImages = await Promise.all(placedStickers.map(async (stk) => {
@@ -1599,22 +1615,39 @@ const App = () => {
       const recordCanvas = document.createElement('canvas');
       const videoRenderScale = getVideoRenderScale();
 
-      recordCanvas.width = Math.round(config.W * videoRenderScale);
-      recordCanvas.height = Math.round(config.H * videoRenderScale);
+      recordCanvas.width = Math.max(240, Math.round(config.W * videoRenderScale));
+      recordCanvas.height = Math.max(360, Math.round(config.H * videoRenderScale));
 
       const ctx = recordCanvas.getContext('2d', { alpha: false });
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      const outputStream = recordCanvas.captureStream(window.innerWidth < 768 ? 20 : 24);
+      ctx.imageSmoothingQuality = 'medium';
 
-      const selectedMimeType = getSupportedRecorderMimeType();
+      const outputStream = recordCanvas.captureStream(TARGET_FPS);
+      const canvasTrack = outputStream.getVideoTracks ? outputStream.getVideoTracks()[0] : null;
+      const requestCanvasFrame = () => {
+          if (canvasTrack && typeof canvasTrack.requestFrame === 'function') {
+              canvasTrack.requestFrame();
+          }
+      };
 
+      let selectedMimeType = getSupportedRecorderMimeType();
       if (!selectedMimeType) {
           throw new Error('Browser ini belum mendukung format video untuk Live Moment.');
       }
 
-      const options = { mimeType: selectedMimeType };
-      const recorder = new MediaRecorder(outputStream, options);
+      let recorder;
+      try {
+          recorder = new MediaRecorder(outputStream, {
+              mimeType: selectedMimeType,
+              videoBitsPerSecond: window.innerWidth < 768 ? 1200000 : 1800000
+          });
+      } catch (err) {
+          // Beberapa browser bilang support mimeType tertentu, tapi gagal saat dipakai.
+          // Jadi kita fallback ke default MediaRecorder agar export tetap jalan.
+          recorder = new MediaRecorder(outputStream);
+          selectedMimeType = recorder.mimeType || selectedMimeType;
+      }
+
       const chunks = [];
 
       recorder.ondataavailable = (e) => {
@@ -1648,20 +1681,13 @@ const App = () => {
           ctx.clip();
       };
 
-      await Promise.all(videos.map((v) => {
-          if (!v) return Promise.resolve();
-          return v.play().catch(() => {});
-      }));
-
-      let isRecording = true;
-
-      const drawFrame = () => {
-          if (!isRecording) return;
-
+      const drawSingleFrame = () => {
           ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
           ctx.save();
           ctx.scale(videoRenderScale, videoRenderScale);
           ctx.filter = 'none';
+          ctx.fillStyle = selectedTemplate?.bgColor || '#ffffff';
+          ctx.fillRect(0, 0, config.W, config.H);
           ctx.drawImage(baseCanvas, 0, 0, config.W, config.H);
 
           for (let i = 0; i < config.slots.length; i++) {
@@ -1679,11 +1705,12 @@ const App = () => {
               ctx.save();
               clipRoundedSlot(slot);
 
-              if (videos[i] && videos[i].readyState >= 2) {
-                  if (currentFilter.style !== 'none') ctx.filter = currentFilter.style;
+              const slotVideo = videos[i];
+              if (slotVideo && slotVideo.readyState >= 2) {
+                  ctx.filter = currentFilter.style || 'none';
                   ctx.translate(vx + vw, vy);
                   ctx.scale(-1, 1);
-                  drawImageCover(ctx, videos[i], 0, 0, vw, vh);
+                  drawImageCover(ctx, slotVideo, 0, 0, vw, vh);
               } else if (photoImages[i]) {
                   ctx.filter = 'none';
                   drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
@@ -1749,51 +1776,98 @@ const App = () => {
           });
 
           ctx.restore();
-          requestAnimationFrame(drawFrame);
+          requestCanvasFrame();
       };
 
       return new Promise((resolve, reject) => {
+          let hasResolved = false;
+
+          const safeReject = (error) => {
+              if (hasResolved) return;
+              hasResolved = true;
+              reject(error);
+          };
+
+          const cleanupVideos = () => {
+              videos.forEach((v) => {
+                  if (v) {
+                      try {
+                          v.pause();
+                          v.removeAttribute('src');
+                          v.load();
+                      } catch {}
+                  }
+              });
+          };
+
           recorder.onerror = () => {
-              isRecording = false;
-              reject(new Error('Recorder video mengalami error.'));
+              cleanupVideos();
+              safeReject(new Error('Recorder video mengalami error. Coba ulangi atau pakai browser Chrome/Edge terbaru.'));
           };
 
           recorder.onstop = () => {
               try {
-                  isRecording = false;
-
-                  videos.forEach((v) => {
-                      if (v) {
-                          v.pause();
-                          v.removeAttribute('src');
-                          v.load();
-                      }
-                  });
+                  cleanupVideos();
 
                   if (!chunks.length) {
-                      reject(new Error('Video gagal dibuat. Coba ulangi sekali lagi setelah Live Moment tampil.'));
+                      safeReject(new Error('Video gagal dibuat. Coba ulangi sekali lagi setelah preview Live Moment tampil.'));
                       return;
                   }
 
-                  const mimeType = recorder.mimeType || selectedMimeType;
+                  const mimeType = recorder.mimeType || selectedMimeType || 'video/webm';
                   const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
                   const blob = new Blob(chunks, { type: mimeType });
 
+                  if (!blob.size) {
+                      safeReject(new Error('Video berhasil diproses tapi filenya kosong. Coba ulangi lagi.'));
+                      return;
+                  }
+
+                  if (hasResolved) return;
+                  hasResolved = true;
                   resolve({ blob, mimeType, ext });
               } catch (err) {
-                  reject(err);
+                  safeReject(err);
               }
           };
 
-          recorder.start(150);
-          drawFrame();
+          const run = async () => {
+              try {
+                  await Promise.all(videos.map((v) => {
+                      if (!v) return Promise.resolve();
+                      v.currentTime = 0;
+                      return v.play().catch(() => {});
+                  }));
 
-          setTimeout(() => {
-              if (recorder.state === 'recording') recorder.stop();
-          }, 3500);
+                  drawSingleFrame();
+                  recorder.start(250);
+
+                  const startedAt = performance.now();
+                  while (performance.now() - startedAt < VIDEO_DURATION_MS) {
+                      drawSingleFrame();
+                      await sleep(FRAME_INTERVAL);
+                  }
+
+                  // Beberapa frame tambahan supaya metadata durasi tidak kepotong jadi 1 detik.
+                  for (let i = 0; i < 4; i++) {
+                      drawSingleFrame();
+                      await sleep(FRAME_INTERVAL);
+                  }
+
+                  if (recorder.state === 'recording') {
+                      if (typeof recorder.requestData === 'function') recorder.requestData();
+                      await sleep(180);
+                      recorder.stop();
+                  }
+              } catch (err) {
+                  if (recorder.state === 'recording') recorder.stop();
+                  safeReject(err);
+              }
+          };
+
+          run();
       });
   };
-
   const downloadLiveVideo = async () => {
       setIsDownloadingVideo(true);
 
@@ -1876,9 +1950,17 @@ const App = () => {
 
           const jpgBlob = await createStaticJpgBlob();
 
-          showToast('Membuat Live Moment video... tunggu sekitar 4 detik.');
+          let videoResult = null;
+          let videoUpload = null;
+          let videoMp4Url = null;
 
-          const videoResult = await createLiveVideoBlob();
+          try {
+              showToast('Membuat Live Moment video... tunggu sekitar 4 detik.');
+              videoResult = await createLiveVideoBlob();
+          } catch (videoErr) {
+              console.warn('Live Moment gagal dibuat, QR akan tetap dibuat dengan JPG saja:', videoErr);
+              showToast('Live Moment belum berhasil diproses. QR tetap dibuat dengan JPG saja.');
+          }
 
           showToast('Mengupload JPG ke Cloudinary...');
 
@@ -1887,22 +1969,32 @@ const App = () => {
               `Aestho-Strip-${Date.now()}.jpg`
           );
 
-          showToast('Mengupload Live Moment ke Cloudinary...');
+          if (videoResult?.blob) {
+              try {
+                  showToast('Mengupload Live Moment ke Cloudinary...');
 
-          const videoUpload = await uploadBlobToCloudinary(
-              videoResult.blob,
-              `Aestho-Live-Moment-${Date.now()}.${videoResult.ext}`
-          );
+                  videoUpload = await uploadBlobToCloudinary(
+                      videoResult.blob,
+                      `Aestho-Live-Moment-${Date.now()}.${videoResult.ext}`
+                  );
 
-          const videoMp4Url = toCloudinaryMp4Url(videoUpload.secure_url);
+                  videoMp4Url = toCloudinaryMp4Url(videoUpload.secure_url);
+              } catch (uploadVideoErr) {
+                  console.warn('Upload video gagal, QR tetap dibuat dengan JPG saja:', uploadVideoErr);
+                  showToast('Upload Live Moment gagal. QR tetap dibuat dengan JPG saja.');
+                  videoResult = null;
+                  videoUpload = null;
+                  videoMp4Url = null;
+              }
+          }
 
           showToast('Menyimpan halaman hasil...');
 
           const resultId = await saveResultToSupabase({
               photoUrl: photoUpload.secure_url,
-              videoUrl: videoUpload.secure_url,
+              videoUrl: videoUpload?.secure_url || null,
               videoMp4Url,
-              videoMimeType: videoResult.mimeType
+              videoMimeType: videoResult?.mimeType || null
           });
 
           const finalUrl = `${window.location.origin}/id/summary/${resultId}`;
@@ -1910,7 +2002,7 @@ const App = () => {
           setQrResultUrl(finalUrl);
           setShowQRModal(true);
 
-          showToast('QR code berhasil dibuat. Scan untuk membuka hasil.');
+          showToast(videoUpload ? 'QR code berhasil dibuat dengan JPG dan Live Moment.' : 'QR code berhasil dibuat dengan JPG.');
       } catch (err) {
           console.error('QR generation failed:', err);
           showToast(err.message || 'Gagal membuat QR code.');
