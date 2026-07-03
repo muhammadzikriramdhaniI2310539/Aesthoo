@@ -10,6 +10,14 @@ const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+const SHINHLIN_INSTAGRAM_URL = 'https://www.instagram.com/shinhlin/';
+
+const isShinhlinTemplateName = (templateName = '') => {
+  const normalizedName = String(templateName || '').toLowerCase();
+
+  return normalizedName.includes('shinhlin');
+};
+
 const generateResultId = () => {
   const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const bytes = new Uint8Array(8);
@@ -194,6 +202,7 @@ const SummaryResultPage = () => {
                 Frame Style: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{result.template_name}</span>
               </p>
             )}
+
           </div>
         </div>
 
@@ -831,6 +840,7 @@ const App = () => {
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
+  const showSelectedShinhlinCredit = isShinhlinTemplateName(selectedTemplate?.name);
 
   // Deteksi mobile hanya untuk mengatur skala preview/editor.
   // Desktop tetap memakai ukuran lama karena isMobile = false di layar md ke atas.
@@ -2605,6 +2615,7 @@ const App = () => {
                                     />
                                 </div>
 
+
                                 <div className="mt-5 grid grid-cols-1 gap-3">
                                     <a
                                         href={qrResultUrl}
@@ -2686,18 +2697,33 @@ const App = () => {
                           <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
                         </div>
                     </div>
+
                 </div>
 
-                {/* === TOMBOL DEVELOPER === */}
-                <a 
-                    href="https://www.instagram.com/dzev.c/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="fixed bottom-6 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
-                >
-                    <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
-                    <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Dev: @dzev.c</span>
-                </a>
+                {/* === CREDIT FINAL RESULT === */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 flex flex-wrap items-center justify-center md:justify-end gap-2 pointer-events-none px-3">
+                    <a 
+                        href="https://www.instagram.com/dzev.c/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
+                    >
+                        <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
+                        <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Dev: @dzev.c</span>
+                    </a>
+
+                    {showSelectedShinhlinCredit && (
+                        <a
+                            href={SHINHLIN_INSTAGRAM_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pointer-events-auto bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:-translate-y-1 transition-all duration-300 group"
+                        >
+                            <Instagram size={14} className="group-hover:text-pink-400 dark:group-hover:text-pink-500 transition-colors duration-300"/>
+                            <span className="font-modern text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">Artist: @shinhlin</span>
+                        </a>
+                    )}
+                </div>
           </main>
         )}
 
