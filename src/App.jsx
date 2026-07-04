@@ -788,8 +788,8 @@ const App = () => {
 
   // QR Result State
   const [qrResultUrl, setQrResultUrl] = useState('');
-  const [showQRModal, setShowQRModal] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [qrGenerationMessage, setQrGenerationMessage] = useState('');
 
   const MAX_PHOTOS = 8;
 
@@ -836,6 +836,7 @@ const App = () => {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
+  const autoQRStartedRef = useRef(false);
   
   const staticStripRef = useRef(null); // Ref untuk export Canvas ke JPG
   const baseStripRef = useRef(null); // Ref untuk base background saat render Video
@@ -999,6 +1000,9 @@ const App = () => {
   
   const handleToFinalResult = () => {
       setActiveStickerId(null);
+      setQrResultUrl('');
+      setQrGenerationMessage('');
+      autoQRStartedRef.current = false;
       setCurrentView('final-result'); 
   };
   const handleBackToHome = () => { setCurrentView('home'); setSelectedLayout(null); };
@@ -1939,14 +1943,16 @@ const App = () => {
       return resultId;
   };
 
-  const handleGenerateQRCode = async () => {
+  const handleGenerateQRCode = async ({ force = false } = {}) => {
       if (isGeneratingQR) return;
+      if (qrResultUrl && !force) return;
 
       setIsGeneratingQR(true);
       setQrResultUrl('');
+      setQrGenerationMessage('Preparing your QR result...');
 
       try {
-          showToast('Membuat JPG hasil photobooth...');
+          setQrGenerationMessage('Processing JPG result...');
 
           const jpgBlob = await createStaticJpgBlob();
 
@@ -1955,14 +1961,14 @@ const App = () => {
           let videoMp4Url = null;
 
           try {
-              showToast('Membuat Live Moment video... tunggu sekitar 4 detik.');
+              setQrGenerationMessage('Processing Live Moment...');
               videoResult = await createLiveVideoBlob();
           } catch (videoErr) {
               console.warn('Live Moment gagal dibuat, QR akan tetap dibuat dengan JPG saja:', videoErr);
-              showToast('Live Moment belum berhasil diproses. QR tetap dibuat dengan JPG saja.');
+              setQrGenerationMessage('Live Moment skipped. Saving JPG result...');
           }
 
-          showToast('Mengupload JPG ke Cloudinary...');
+          setQrGenerationMessage('Saving result page...');
 
           const photoUpload = await uploadBlobToCloudinary(
               jpgBlob,
@@ -1971,8 +1977,6 @@ const App = () => {
 
           if (videoResult?.blob) {
               try {
-                  showToast('Mengupload Live Moment ke Cloudinary...');
-
                   videoUpload = await uploadBlobToCloudinary(
                       videoResult.blob,
                       `Aestho-Live-Moment-${Date.now()}.${videoResult.ext}`
@@ -1981,14 +1985,11 @@ const App = () => {
                   videoMp4Url = toCloudinaryMp4Url(videoUpload.secure_url);
               } catch (uploadVideoErr) {
                   console.warn('Upload video gagal, QR tetap dibuat dengan JPG saja:', uploadVideoErr);
-                  showToast('Upload Live Moment gagal. QR tetap dibuat dengan JPG saja.');
                   videoResult = null;
                   videoUpload = null;
                   videoMp4Url = null;
               }
           }
-
-          showToast('Menyimpan halaman hasil...');
 
           const resultId = await saveResultToSupabase({
               photoUrl: photoUpload.secure_url,
@@ -2000,16 +2001,28 @@ const App = () => {
           const finalUrl = `${window.location.origin}/id/summary/${resultId}`;
 
           setQrResultUrl(finalUrl);
-          setShowQRModal(true);
-
-          showToast(videoUpload ? 'QR code berhasil dibuat dengan JPG dan Live Moment.' : 'QR code berhasil dibuat dengan JPG.');
+          setQrGenerationMessage(videoUpload ? 'QR ready with JPG and Live Moment.' : 'QR ready with JPG only.');
       } catch (err) {
           console.error('QR generation failed:', err);
-          showToast(err.message || 'Gagal membuat QR code.');
+          setQrGenerationMessage(err.message || 'QR code gagal dibuat. Coba refresh halaman atau buka ulang Final Result.');
+          autoQRStartedRef.current = false;
       } finally {
           setIsGeneratingQR(false);
       }
   };
+
+  useEffect(() => {
+      if (currentView !== 'final-result') return;
+      if (qrResultUrl || isGeneratingQR || autoQRStartedRef.current) return;
+
+      const timer = setTimeout(() => {
+          if (autoQRStartedRef.current) return;
+          autoQRStartedRef.current = true;
+          handleGenerateQRCode();
+      }, 450);
+
+      return () => clearTimeout(timer);
+  }, [currentView, qrResultUrl, isGeneratingQR]);
 
   const toCssImageUrl = (src) => `url("${String(src || '').replace(/"/g, '\\"')}")`;
 
@@ -2462,18 +2475,18 @@ const App = () => {
                 </div>
                 <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full justify-start md:justify-center items-center gap-4 md:gap-10 p-4 overflow-y-auto md:overflow-hidden pb-8">
                     <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full relative order-1 md:order-1">
-                        <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 md:mb-8">YOUR RESULT</span>
+                        <span className="font-modern text-[10px] md:text-[11px] tracking-[0.22em] text-zinc-400 dark:text-zinc-500 mb-3 md:mb-8">YOUR RESULT</span>
                         <div className="transform scale-100 origin-center">
-                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.18 : 0.18) : (selectedLayout === 'grid-4r' ? 0.25 : 0.25)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.22 : 0.21) : (selectedLayout === 'grid-4r' ? 0.31 : 0.29)} layoutConfig={getLayoutConfig(selectedLayout)} />
                         </div>
                     </div>
-                    <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[320px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 py-4 md:py-2 overflow-visible">
-                        <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500 mb-3 md:absolute md:top-10">SELECT FRAME</span>
-                        <div className="w-full md:max-w-lg h-[275px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-8 md:gap-10 hide-scrollbar px-10 md:px-20 py-4 md:py-20">
+                    <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[360px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-2xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 py-5 md:py-3 overflow-visible">
+                        <span className="font-modern text-[10px] md:text-[11px] tracking-[0.22em] text-zinc-400 dark:text-zinc-500 mb-4 md:absolute md:top-10">SELECT FRAME</span>
+                        <div className="w-full md:max-w-xl h-[320px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-9 md:gap-12 hide-scrollbar px-10 md:px-20 py-5 md:py-20">
                             {stripTemplates.filter(t => t.layoutId === selectedLayout).map((tpl) => (
                                 <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
-                                    <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-75 md:scale-100 origin-center">
-                                         <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.1 : 0.13) : (selectedLayout === 'grid-4r' ? 0.1 : 0.15)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
+                                    <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-90 md:scale-105 origin-center">
+                                         <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.12 : 0.16) : (selectedLayout === 'grid-4r' ? 0.12 : 0.18)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
                                     </div>
                                     <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500 dark:text-zinc-400 max-w-[90px] leading-relaxed">{tpl.name}</span>
                                 </div>
@@ -2505,7 +2518,7 @@ const App = () => {
                                photos={selectedStripPhotos} 
                                mode={selectedMode} 
                                characterData={selectedCharacterData} 
-                               scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.18) : (selectedLayout === 'grid-4r' ? 0.35 : 0.25)} 
+                               scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.28 : 0.22) : (selectedLayout === 'grid-4r' ? 0.42 : 0.33)} 
                                layoutConfig={getLayoutConfig(selectedLayout)}
                                isEditable={true} 
                             />
@@ -2579,15 +2592,6 @@ const App = () => {
                     <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
                         <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2 transition-colors">BACK</button>
                         
-                        <button
-                            onClick={handleGenerateQRCode}
-                            disabled={isGeneratingQR}
-                            className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-white text-black border border-zinc-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-100 dark:hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all shadow-sm"
-                        >
-                            {isGeneratingQR ? <Loader2 size={12} className="animate-spin" /> : <QrCode size={12} />}
-                            QR CODE
-                        </button>
-
                         <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
                             {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
                         </button>
@@ -2597,78 +2601,7 @@ const App = () => {
                     </div>
                 </div>
                 
-                {showQRModal && qrResultUrl && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 dark:bg-black/70 backdrop-blur-md">
-                        <div className="relative w-full max-w-sm bg-white dark:bg-zinc-950 rounded-[2rem] border border-white/80 dark:border-zinc-800 shadow-2xl overflow-hidden">
-                            <div className="absolute top-0 left-0 w-32 h-32 bg-pink-200/60 dark:bg-pink-500/20 blur-3xl rounded-full -translate-x-12 -translate-y-12" />
-                            <div className="absolute bottom-0 right-0 w-36 h-36 bg-blue-200/70 dark:bg-blue-500/20 blur-3xl rounded-full translate-x-12 translate-y-12" />
-
-                            <button
-                                onClick={() => setShowQRModal(false)}
-                                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-800/90 text-zinc-500 hover:text-black dark:hover:text-white flex items-center justify-center transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-
-                            <div className="relative z-10 p-6 text-center">
-                                <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 uppercase mb-2">
-                                    Scan Result
-                                </p>
-
-                                <h2 className="font-title text-4xl text-black dark:text-white mb-2">
-                                    Your QR Code
-                                </h2>
-
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
-                                    Scan this code to open your Aestho result page with JPG and Live Moment.
-                                </p>
-
-                                <div className="bg-white rounded-[1.5rem] p-4 border border-zinc-100 shadow-inner flex items-center justify-center">
-                                    <QRCodeSVG
-                                        value={qrResultUrl}
-                                        size={210}
-                                        bgColor="#ffffff"
-                                        fgColor="#000000"
-                                        level="M"
-                                    />
-                                </div>
-
-
-                                <div className="mt-5 grid grid-cols-1 gap-3">
-                                    <a
-                                        href={qrResultUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full px-5 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] tracking-widest hover:opacity-80 transition-opacity"
-                                    >
-                                        OPEN RESULT PAGE
-                                    </a>
-
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await navigator.clipboard.writeText(qrResultUrl);
-                                                showToast('Link QR berhasil disalin.');
-                                            } catch {
-                                                showToast('Gagal menyalin link QR.');
-                                            }
-                                        }}
-                                        className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 font-mono text-[10px] tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        <Copy size={12} />
-                                        COPY LINK
-                                    </button>
-                                </div>
-
-                                <p className="mt-4 text-[9px] text-zinc-400 font-mono break-all leading-relaxed">
-                                    {qrResultUrl}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* HIDDEN RENDER */}
+                                {/* HIDDEN RENDER */}
                 <div
                     aria-hidden="true"
                     style={{
@@ -2702,80 +2635,187 @@ const App = () => {
                     <AesthoStrip stripRef={baseStripRef} template={selectedTemplate} photos={Array(selectedLayout === 'grid-4r' ? 6 : 4).fill(null)} mode="original" scale={1} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} showPlacedStickers={false} />
                 </div>
 
-                <div className="flex-1 min-h-0 flex flex-col md:flex-row w-full justify-start md:justify-center items-center gap-8 md:gap-16 px-4 pt-5 md:p-8 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#050505] pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 relative z-0">
-                    <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                        <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500">STATIC RESULT</span>
-                        <div className="transform scale-100 origin-top">
-                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
-                        </div>
-                    </div>
-                    <div className="w-full md:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                        <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
-                        <div className="transform scale-100 origin-top">
-                          <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.20 : 0.18) : (selectedLayout === 'grid-4r' ? 0.30 : 0.30)} layoutConfig={getLayoutConfig(selectedLayout)} />
-                        </div>
-                    </div>
+                <div className="flex-1 min-h-0 w-full px-4 pt-7 pb-[calc(11rem+env(safe-area-inset-bottom))] md:px-8 md:pt-10 md:pb-28 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#050505] relative z-0">
+                    <div className="min-h-full w-full flex items-center justify-center">
+                        <div className="w-full max-w-[1120px] grid grid-cols-1 md:grid-cols-[minmax(190px,250px)_auto_minmax(240px,290px)] items-center gap-7 md:gap-7 lg:gap-8">
+                            {/* Spacer kanan-kiri agar dua strip tetap terasa tepat di tengah halaman */}
+                            <div className="hidden md:block" aria-hidden="true" />
 
+                            <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-8 md:gap-8 lg:gap-9 md:-translate-x-10 lg:-translate-x-16 transition-transform">
+                                <div className="w-full sm:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
+                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500">STATIC RESULT</span>
+                                    <div className="transform scale-100 origin-top">
+                                      <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.205) : (selectedLayout === 'grid-4r' ? 0.32 : 0.34)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                                    </div>
+                                </div>
+
+                                <div className="w-full sm:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
+                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
+                                    <div className="transform scale-100 origin-top">
+                                      <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.205) : (selectedLayout === 'grid-4r' ? 0.32 : 0.34)} layoutConfig={getLayoutConfig(selectedLayout)} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="w-full max-w-[300px] md:w-[300px] lg:w-[310px] mx-auto md:mx-0 flex flex-col items-center gap-3 md:gap-4 shrink-0">
+                                <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
+                                    SCAN RESULT
+                                    {isGeneratingQR && <Loader2 size={12} className="animate-spin" />}
+                                </span>
+
+                                <div className="w-full rounded-[1.75rem] bg-white/90 dark:bg-zinc-950/80 border border-white/80 dark:border-zinc-800 shadow-[0_18px_55px_rgba(0,0,0,0.09)] dark:shadow-[0_18px_55px_rgba(0,0,0,0.42)] overflow-hidden relative">
+                                    <div className="absolute top-0 left-0 w-28 h-28 bg-pink-100/70 dark:bg-pink-500/10 blur-3xl rounded-full -translate-x-10 -translate-y-10 pointer-events-none" />
+                                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-100/80 dark:bg-blue-500/10 blur-3xl rounded-full translate-x-10 translate-y-10 pointer-events-none" />
+
+                                    <div className="relative z-10 p-4 md:p-5 text-center">
+                                        <p className="font-modern text-[8px] tracking-[0.28em] text-zinc-400 uppercase mb-1">
+                                            Your QR Code
+                                        </p>
+
+                                        <h3 className="font-title text-3xl md:text-[2.15rem] text-black dark:text-white mb-2">
+                                            Scan Result
+                                        </h3>
+
+                                        <p className="text-[10px] leading-relaxed text-zinc-500 dark:text-zinc-400 mb-3">
+                                            Scan this code to open your Aestho result page with JPG and Live Moment.
+                                        </p>
+
+                                        <div className="min-h-[198px] md:min-h-[210px] rounded-[1.35rem] bg-white border border-zinc-100 shadow-inner flex items-center justify-center p-3">
+                                            {qrResultUrl ? (
+                                                <QRCodeSVG
+                                                    value={qrResultUrl}
+                                                    size={isMobile ? 176 : 188}
+                                                    bgColor="#ffffff"
+                                                    fgColor="#000000"
+                                                    level="M"
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center gap-3 text-zinc-400">
+                                                    {isGeneratingQR ? (
+                                                        <>
+                                                            <Loader2 size={24} className="animate-spin" />
+                                                            <span className="font-modern text-[9px] tracking-[0.18em] uppercase">Preparing QR</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <QrCode size={26} />
+                                                            <button
+                                                                onClick={() => handleGenerateQRCode({ force: true })}
+                                                                className="px-4 py-2 rounded-full bg-black text-white text-[9px] font-mono tracking-widest hover:bg-zinc-800 transition-colors"
+                                                            >
+                                                                CREATE QR
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {qrGenerationMessage && (
+                                            <p className="mt-2.5 text-[8.5px] text-zinc-400 dark:text-zinc-500 font-modern tracking-[0.12em] uppercase leading-relaxed">
+                                                {qrGenerationMessage}
+                                            </p>
+                                        )}
+
+                                        <div className="mt-3 grid grid-cols-1 gap-2">
+                                            {qrResultUrl && (
+                                                <>
+                                                    <a
+                                                        href={qrResultUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="w-full px-5 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[8.5px] tracking-widest hover:opacity-80 transition-opacity"
+                                                    >
+                                                        OPEN RESULT PAGE
+                                                    </a>
+
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                await navigator.clipboard.writeText(qrResultUrl);
+                                                                showToast('Link QR berhasil disalin.');
+                                                            } catch {
+                                                                showToast('Gagal menyalin link QR.');
+                                                            }
+                                                        }}
+                                                        className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 font-mono text-[8.5px] tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                                                    >
+                                                        <Copy size={11} />
+                                                        COPY LINK
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {qrResultUrl && (
+                                            <p className="mt-2.5 text-[7.5px] text-zinc-300 dark:text-zinc-600 font-mono break-all leading-relaxed">
+                                                {qrResultUrl}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* === CREDIT FINAL RESULT === */}
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:bottom-8 md:right-8 md:left-auto md:translate-x-0 z-50 pointer-events-none px-3 w-full md:w-auto flex justify-center md:justify-end">
-                    <div className="pointer-events-auto max-w-[calc(100vw-1.5rem)] rounded-[1.75rem] md:rounded-full bg-white/75 dark:bg-zinc-950/70 backdrop-blur-2xl border border-white/70 dark:border-zinc-800/80 shadow-[0_18px_60px_rgba(0,0,0,0.12)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.45)] p-1.5 flex flex-wrap items-center justify-center gap-1">
-                        <a 
-                            href="https://www.instagram.com/dzev.c/" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
-                        >
-                            <Instagram size={13} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
-                            <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">
-                                <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Dev</span> @dzev.c
-                            </span>
-                        </a>
-
-                        <span className="hidden sm:block w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
-
-                        {showSelectedShinhlinCredit && (
-                            <a
-                                href={SHINHLIN_INSTAGRAM_URL}
-                                target="_blank"
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:bottom-6 md:right-7 md:left-auto md:translate-x-0 z-50 pointer-events-none px-3 w-full md:w-auto flex justify-center md:justify-end">
+                    <div className="pointer-events-auto max-w-[calc(100vw-1.5rem)] rounded-[1.45rem] bg-white/78 dark:bg-zinc-950/72 backdrop-blur-2xl border border-white/70 dark:border-zinc-800/80 shadow-[0_18px_60px_rgba(0,0,0,0.12)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.45)] p-1 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(175px,auto)] gap-1 items-stretch">
+                        <div className="flex flex-col gap-0.5 min-w-[185px]">
+                            <a 
+                                href="https://www.instagram.com/dzev.c/" 
+                                target="_blank" 
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
+                                className="group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
                             >
-                                <Instagram size={13} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
-                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">
-                                    <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Artist</span> @shinhlin
+                                <Instagram size={12} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
+                                <span className="font-modern text-[8px] md:text-[8.5px] tracking-[0.16em] uppercase font-bold whitespace-nowrap">
+                                    <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Dev</span> @dzev.c
                                 </span>
                             </a>
-                        )}
 
-                        <span className="hidden sm:block w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
+                            {showSelectedShinhlinCredit && (
+                                <a
+                                    href={SHINHLIN_INSTAGRAM_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
+                                >
+                                    <Instagram size={12} className="text-zinc-400 group-hover:text-pink-400 transition-colors" />
+                                    <span className="font-modern text-[8px] md:text-[8.5px] tracking-[0.16em] uppercase font-bold whitespace-nowrap">
+                                        <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-white/70 dark:group-hover:text-black/60">Artist</span> @shinhlin
+                                    </span>
+                                </a>
+                            )}
+                        </div>
 
-                        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-[190px]">
+                        <div className="flex flex-col gap-0.5 min-w-[175px]">
                             <a
                                 href={REQUEST_CHARACTER_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-2 bg-white/70 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-transparent transition-all duration-300 shadow-sm"
+                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3 py-1.5 bg-white/70 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-950 hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-transparent transition-all duration-300 shadow-sm"
                                 title="Request a new character for Aestho"
                             >
-                                <Sparkles size={13} className="text-zinc-400 group-hover:text-yellow-300 dark:group-hover:text-yellow-500 transition-colors" />
-                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Request Character</span>
+                                <Sparkles size={12} className="text-zinc-400 group-hover:text-yellow-300 dark:group-hover:text-yellow-500 transition-colors" />
+                                <span className="font-modern text-[8px] md:text-[8.5px] tracking-[0.16em] uppercase font-bold whitespace-nowrap">Request Character</span>
                             </a>
 
                             <a
                                 href={TRAKTEER_SUPPORT_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3.5 py-2 bg-zinc-950 text-white dark:bg-white dark:text-black hover:opacity-90 transition-all duration-300 shadow-sm"
+                                className="group inline-flex items-center justify-center gap-2 rounded-full px-3 py-1.5 bg-zinc-950 text-white dark:bg-white dark:text-black hover:opacity-90 transition-all duration-300 shadow-sm"
                                 title="Support Aestho on Trakteer"
                             >
-                                <Heart size={13} className="fill-current" />
-                                <span className="font-modern text-[8.5px] md:text-[9.5px] tracking-[0.18em] uppercase font-bold whitespace-nowrap">Support Aestho</span>
+                                <Heart size={12} className="fill-current" />
+                                <span className="font-modern text-[8px] md:text-[8.5px] tracking-[0.16em] uppercase font-bold whitespace-nowrap">Support Aestho</span>
                             </a>
                         </div>
                     </div>
                 </div>
+
           </main>
         )}
 
