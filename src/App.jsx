@@ -561,7 +561,7 @@ const App = () => {
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
-              overlayUrl: 'https://lh3.googleusercontent.com/d/190IvQym3YBKWKUIRu0uIi8PczDrU0uh3',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/1t3viQBnCOyfMXdVHuIigDunvPQTExerp',
               styleContainer: { backgroundColor: 'white' },
               photoRadius: 'rounded-none',
               hideFooter: true
@@ -572,7 +572,7 @@ const App = () => {
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
-              overlayUrl: 'https://lh3.googleusercontent.com/d/1XVzWJL3TuxbnmDKTaJ7B7j2i9ORulput',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/185oF4tEA4rcBHBc7q4nN5eKk0O745dw7',
               styleContainer: { backgroundColor: 'white' },
               photoRadius: 'rounded-none',
               hideFooter: true
@@ -583,7 +583,7 @@ const App = () => {
               type: 'css', 
               bgColor: '#ffffff', 
               textColor: 'black',
-              overlayUrl: 'https://lh3.googleusercontent.com/d/1ZSHgFfzeMaEDQSccpt8u-tN4dvJZoVBc',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/1DPMmWLjdZvKaN6ojuvltw66maC0Vkeb2',
               styleContainer: { backgroundColor: 'white' },
               photoRadius: 'rounded-none',
               hideFooter: true
