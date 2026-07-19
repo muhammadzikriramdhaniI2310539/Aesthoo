@@ -399,7 +399,19 @@ const App = () => {
             position: 'left',
             styles: { 0: 'w-[60%]', 1: 'w-[60%]', 2: 'w-[60%]', 3: 'w-[60%]' }
         },
-        { id: 'tartaglia', name: 'Tartaglia', overlayImg: 'https://placehold.co/600x800/transparent/ef4444?text=Tartaglia+Pose', theme: 'bg-red-50' },
+        { 
+            id: 'tartaglia', 
+            name: 'Tartaglia', 
+            overlayImg: [
+                'https://lh3.googleusercontent.com/d/1vIbKkPK5gQBw7BEEf1550MOhC3qBTNsL',
+                'https://lh3.googleusercontent.com/d/1mP_lwG4NSWqrKY5XkiNR9lcyTEo0B7nW',
+                'https://lh3.googleusercontent.com/d/1Z0pGbDemIMT7UnTsaOzrzGeaT7XALVYe',
+                'https://lh3.googleusercontent.com/d/1nmb5B8csJERv5pxaqd7IZ3lJk2Ls4ByD'
+            ],
+            theme: 'bg-red-50',
+            position: 'right',
+            styles: { 0: 'w-[95%]', 1: 'w-[95%]', 2: 'w-[95%]', 3: 'w-[95%]' }
+        },
         { id: 'ganyu', name: 'Ganyu', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Ganyu+Pose', theme: 'bg-blue-100' }
       ]
     },
