@@ -845,6 +845,7 @@ const App = () => {
   const videoRef = useRef(null);
   const characterListRef = useRef(null); 
   const animeListRef = useRef(null); 
+  const templateListRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
@@ -1041,6 +1042,16 @@ const App = () => {
         const scrollAmount = 200;
         if (direction === 'left') animeListRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
         else animeListRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollTemplateList = (direction) => {
+    if (templateListRef.current) {
+        const scrollAmount = Math.max(220, templateListRef.current.clientWidth * 0.75);
+        templateListRef.current.scrollBy({
+            left: direction === 'left' ? -scrollAmount : scrollAmount,
+            behavior: 'smooth'
+        });
     }
   };
 
@@ -2494,9 +2505,31 @@ const App = () => {
                     </div>
                     <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[360px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-2xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 py-5 md:py-3 overflow-visible">
                         <span className="font-modern text-[10px] md:text-[11px] tracking-[0.22em] text-zinc-400 dark:text-zinc-500 mb-4 md:absolute md:top-10">SELECT FRAME</span>
-                        <div className="w-full md:max-w-xl h-[320px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-9 md:gap-12 hide-scrollbar px-10 md:px-20 py-5 md:py-20">
+
+                        <button
+                            type="button"
+                            onClick={() => scrollTemplateList('left')}
+                            aria-label="Previous frame"
+                            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => scrollTemplateList('right')}
+                            aria-label="Next frame"
+                            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+
+                        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-l-2xl" />
+                        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-r-2xl" />
+
+                        <div ref={templateListRef} className="w-full md:max-w-xl h-[320px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-9 md:gap-12 hide-scrollbar px-14 md:px-24 py-5 md:py-20 scroll-smooth">
                             {stripTemplates.filter(t => t.layoutId === selectedLayout).map((tpl) => (
-                                <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-10 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
+                                <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-20 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
                                     <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-90 md:scale-105 origin-center">
                                          <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.12 : 0.16) : (selectedLayout === 'grid-4r' ? 0.12 : 0.18)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
                                     </div>
