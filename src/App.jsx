@@ -774,6 +774,7 @@ const App = () => {
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(stripTemplates[0]);
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState(null);
 
   const [currentFilter, setCurrentFilter] = useState(filters[0]);
   const [timerDuration, setTimerDuration] = useState(3);
@@ -859,6 +860,35 @@ const App = () => {
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
   const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
+
+  const isGenshinTemplate = (template = {}) => {
+      const templateId = String(template.id || '').toLowerCase();
+      const templateName = String(template.name || '').toLowerCase();
+
+      return (
+          templateId.includes('citlali') ||
+          templateId.includes('genshin') ||
+          templateName.includes('citlali') ||
+          templateName.includes('genshin') ||
+          templateName.includes('teyvat')
+      );
+  };
+
+  const getTemplateCategoryItems = (category) => {
+      const validTemplates = stripTemplates.filter(t => t.layoutId === selectedLayout);
+
+      if (category === 'genshin') {
+          return validTemplates.filter(isGenshinTemplate);
+      }
+
+      if (category === 'aestho') {
+          return validTemplates.filter(t => !isGenshinTemplate(t));
+      }
+
+      return [];
+  };
+
+  const visibleTemplateOptions = selectedTemplateCategory ? getTemplateCategoryItems(selectedTemplateCategory) : [];
   const showSelectedShinhlinCredit = true;
 
   // Deteksi mobile hanya untuk mengatur skala preview/editor.
@@ -1001,13 +1031,21 @@ const App = () => {
   const handleFrameConfirm = () => triggerTransition(() => setCurrentView('camera-session'));
   const handleToTemplateSelection = () => {
       const validTemplates = stripTemplates.filter(t => t.layoutId === selectedLayout);
+      setSelectedTemplateCategory(null);
       if (validTemplates.length > 0 && selectedTemplate.layoutId !== selectedLayout) {
           setSelectedTemplate(validTemplates[0]);
       }
       setCurrentView('template-selection');
   };
   
-  const handleToStickerEditor = () => setCurrentView('sticker-editor');
+  const handleToStickerEditor = () => {
+      if (!selectedTemplateCategory) {
+          showToast('Pilih koleksi frame dulu: Aestho atau Genshin.');
+          return;
+      }
+
+      setCurrentView('sticker-editor');
+  };
   
   const handleBackToTemplate = () => setCurrentView('template-selection');
   
@@ -1053,6 +1091,21 @@ const App = () => {
             behavior: 'smooth'
         });
     }
+  };
+
+  const handleTemplateCategorySelect = (category) => {
+      setSelectedTemplateCategory(category);
+
+      const categoryTemplates = getTemplateCategoryItems(category);
+      if (categoryTemplates.length > 0) {
+          setSelectedTemplate(categoryTemplates[0]);
+      }
+
+      requestAnimationFrame(() => {
+          if (templateListRef.current) {
+              templateListRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+          }
+      });
   };
 
   const startRecording = () => {
@@ -2503,40 +2556,79 @@ const App = () => {
                           <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.22 : 0.21) : (selectedLayout === 'grid-4r' ? 0.31 : 0.29)} layoutConfig={getLayoutConfig(selectedLayout)} />
                         </div>
                     </div>
-                    <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto min-h-[360px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-2xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 py-5 md:py-3 overflow-visible">
-                        <span className="font-modern text-[10px] md:text-[11px] tracking-[0.22em] text-zinc-400 dark:text-zinc-500 mb-4 md:absolute md:top-10">SELECT FRAME</span>
+                    <div className="flex-none flex flex-col items-center justify-start w-full md:w-auto min-h-[400px] h-auto md:h-full relative bg-gray-50/30 dark:bg-[#111] rounded-2xl border border-gray-100/50 dark:border-zinc-800 order-2 md:order-2 pt-5 pb-5 md:pt-8 md:pb-3 overflow-visible">
+                        <span className="font-modern text-[10px] md:text-[11px] tracking-[0.22em] text-zinc-400 dark:text-zinc-500 mb-4">SELECT FRAME</span>
 
-                        <button
-                            type="button"
-                            onClick={() => scrollTemplateList('left')}
-                            aria-label="Previous frame"
-                            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
-                        >
-                            <ChevronLeft size={18} />
-                        </button>
+                        <div className="flex items-center justify-center gap-2 md:gap-3 mb-4 md:mb-6 px-4">
+                            <button
+                                type="button"
+                                onClick={() => handleTemplateCategorySelect('aestho')}
+                                className={`h-9 md:h-10 px-5 md:px-7 rounded-xl border text-[9px] md:text-[10px] font-modern font-bold tracking-[0.18em] transition-all active:scale-95 ${selectedTemplateCategory === 'aestho' ? 'bg-black text-white border-black shadow-lg dark:bg-white dark:text-black dark:border-white' : 'bg-white/80 text-zinc-500 border-zinc-200 hover:border-black hover:text-black dark:bg-zinc-900/80 dark:text-zinc-400 dark:border-zinc-700 dark:hover:text-white dark:hover:border-white'}`}
+                            >
+                                AESTHO
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => scrollTemplateList('right')}
-                            aria-label="Next frame"
-                            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
-                        >
-                            <ChevronRight size={18} />
-                        </button>
-
-                        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-l-2xl" />
-                        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-r-2xl" />
-
-                        <div ref={templateListRef} className="w-full md:max-w-xl h-[320px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-9 md:gap-12 hide-scrollbar px-14 md:px-24 py-5 md:py-20 scroll-smooth">
-                            {stripTemplates.filter(t => t.layoutId === selectedLayout).map((tpl) => (
-                                <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate.id === tpl.id ? 'opacity-100 z-20 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
-                                    <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-90 md:scale-105 origin-center">
-                                         <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.12 : 0.16) : (selectedLayout === 'grid-4r' ? 0.12 : 0.18)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
-                                    </div>
-                                    <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500 dark:text-zinc-400 max-w-[90px] leading-relaxed">{tpl.name}</span>
-                                </div>
-                            ))}
+                            <button
+                                type="button"
+                                onClick={() => handleTemplateCategorySelect('genshin')}
+                                className={`h-9 md:h-10 px-5 md:px-7 rounded-xl border text-[9px] md:text-[10px] font-modern font-bold tracking-[0.18em] transition-all active:scale-95 ${selectedTemplateCategory === 'genshin' ? 'bg-black text-white border-black shadow-lg dark:bg-white dark:text-black dark:border-white' : 'bg-white/80 text-zinc-500 border-zinc-200 hover:border-black hover:text-black dark:bg-zinc-900/80 dark:text-zinc-400 dark:border-zinc-700 dark:hover:text-white dark:hover:border-white'}`}
+                            >
+                                GENSHIN
+                            </button>
                         </div>
+
+                        {selectedTemplateCategory && visibleTemplateOptions.length > 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => scrollTemplateList('left')}
+                                    aria-label="Previous frame"
+                                    className="absolute left-2 md:left-4 top-[58%] -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => scrollTemplateList('right')}
+                                    aria-label="Next frame"
+                                    className="absolute right-2 md:right-4 top-[58%] -translate-y-1/2 z-30 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700 shadow-lg backdrop-blur-md flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black active:scale-95 transition-all"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+
+                                <div className="pointer-events-none absolute left-0 top-[120px] bottom-0 w-16 bg-gradient-to-r from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-l-2xl" />
+                                <div className="pointer-events-none absolute right-0 top-[120px] bottom-0 w-16 bg-gradient-to-l from-gray-50/80 to-transparent dark:from-[#111]/80 z-10 rounded-r-2xl" />
+                            </>
+                        )}
+
+                        {!selectedTemplateCategory ? (
+                            <div className="w-full md:w-[560px] h-[300px] md:h-full flex flex-col items-center justify-center px-10 text-center">
+                                <div className="w-16 h-16 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center mb-5 text-zinc-300 dark:text-zinc-600">
+                                    <LayoutTemplate size={22} />
+                                </div>
+                                <p className="font-modern text-[10px] tracking-[0.24em] text-zinc-400 dark:text-zinc-500 uppercase leading-relaxed">
+                                    Choose Aestho or Genshin frame first
+                                </p>
+                            </div>
+                        ) : visibleTemplateOptions.length === 0 ? (
+                            <div className="w-full md:w-[560px] h-[300px] md:h-full flex flex-col items-center justify-center px-10 text-center">
+                                <p className="font-modern text-[10px] tracking-[0.24em] text-zinc-400 dark:text-zinc-500 uppercase leading-relaxed">
+                                    No frame available in this collection
+                                </p>
+                            </div>
+                        ) : (
+                            <div ref={templateListRef} className="w-full md:max-w-xl h-[300px] md:h-full overflow-x-auto overflow-y-visible snap-x snap-mandatory flex items-center gap-9 md:gap-12 hide-scrollbar px-14 md:px-24 py-5 md:py-16 scroll-smooth">
+                                {visibleTemplateOptions.map((tpl) => (
+                                    <div key={tpl.id} onClick={() => setSelectedTemplate(tpl)} className={`cursor-pointer flex-shrink-0 flex flex-col items-center gap-2 md:gap-4 transition-all duration-500 snap-center ${selectedTemplate?.id === tpl.id ? 'opacity-100 z-20 drop-shadow-xl scale-105 md:scale-110' : 'opacity-60 hover:opacity-100 scale-90'}`}>
+                                        <div className="pointer-events-none border border-zinc-200 dark:border-zinc-700 shadow-sm bg-white overflow-visible transform scale-90 md:scale-105 origin-center">
+                                             <AesthoStrip template={tpl} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.12 : 0.16) : (selectedLayout === 'grid-4r' ? 0.12 : 0.18)} shadow={false} layoutConfig={getLayoutConfig(selectedLayout)} />
+                                        </div>
+                                        <span className="font-modern text-[8px] uppercase text-center mt-1 tracking-widest text-zinc-500 dark:text-zinc-400 max-w-[90px] leading-relaxed">{tpl.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>
