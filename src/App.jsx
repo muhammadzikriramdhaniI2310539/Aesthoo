@@ -360,20 +360,6 @@ const App = () => {
       icon: <Star className="text-blue-500"/>,
       characters: [
         { 
-            id: 'furina', 
-            name: 'Furina', 
-            overlayImg: [
-                '',
-                '',
-                '',
-                ''
-            ],
-            theme: 'bg-blue-50' 
-        },
-        { id: 'zhongli', name: 'Zhongli', overlayImg: 'https://placehold.co/600x800/transparent/d97706?text=Zhongli+Pose', theme: 'bg-yellow-50' },
-        { id: 'raiden', name: 'Raiden Shogun', overlayImg: 'https://placehold.co/600x800/transparent/9333ea?text=Raiden+Pose', theme: 'bg-purple-50' },
-        { id: 'nahida', name: 'Nahida', overlayImg: 'https://placehold.co/600x800/transparent/22c55e?text=Nahida+Pose', theme: 'bg-green-50' },
-       { 
             id: 'citlali', 
             name: 'Citlali', 
             overlayImg: [
@@ -385,19 +371,6 @@ const App = () => {
             theme: 'bg-pink-50',
             position: 'right',
             styles: { 0: 'w-[95%]', 1: 'w-[95%]', 2: 'w-[95%]', 3: 'w-[95%]' }
-        },
-        { 
-            id: 'lumine', 
-            name: 'Lumine', 
-            overlayImg: [
-                '',
-                '',
-                '',
-                ''
-            ],
-            theme: 'bg-yellow-100', 
-            position: 'left',
-            styles: { 0: 'w-[60%]', 1: 'w-[60%]', 2: 'w-[60%]', 3: 'w-[60%]' }
         },
         { 
             id: 'tartaglia', 
@@ -412,6 +385,33 @@ const App = () => {
             position: 'right',
             styles: { 0: 'w-[95%]', 1: 'w-[95%]', 2: 'w-[95%]', 3: 'w-[95%]' }
         },
+        { 
+            id: 'furina', 
+            name: 'Furina', 
+            overlayImg: [
+                '',
+                '',
+                '',
+                ''
+            ],
+            theme: 'bg-blue-50' 
+        },
+        { 
+            id: 'lumine', 
+            name: 'Lumine', 
+            overlayImg: [
+                '',
+                '',
+                '',
+                ''
+            ],
+            theme: 'bg-yellow-100', 
+            position: 'left',
+            styles: { 0: 'w-[60%]', 1: 'w-[60%]', 2: 'w-[60%]', 3: 'w-[60%]' }
+        },
+        { id: 'zhongli', name: 'Zhongli', overlayImg: 'https://placehold.co/600x800/transparent/d97706?text=Zhongli+Pose', theme: 'bg-yellow-50' },
+        { id: 'raiden', name: 'Raiden Shogun', overlayImg: 'https://placehold.co/600x800/transparent/9333ea?text=Raiden+Pose', theme: 'bg-purple-50' },
+        { id: 'nahida', name: 'Nahida', overlayImg: 'https://placehold.co/600x800/transparent/22c55e?text=Nahida+Pose', theme: 'bg-green-50' },
         { id: 'ganyu', name: 'Ganyu', overlayImg: 'https://placehold.co/600x800/transparent/3b82f6?text=Ganyu+Pose', theme: 'bg-blue-100' }
       ]
     },
