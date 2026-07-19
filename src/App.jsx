@@ -556,6 +556,39 @@ const App = () => {
               hideFooter: true
           },
           { 
+              id: 'tartaglia-frame-orange', 
+              name: 'Tartaglia Frame Orange Ver (Shinhlin)', 
+              type: 'css', 
+              bgColor: '#ffffff', 
+              textColor: 'black',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/190IvQym3YBKWKUIRu0uIi8PczDrU0uh3',
+              styleContainer: { backgroundColor: 'white' },
+              photoRadius: 'rounded-none',
+              hideFooter: true
+          },
+          { 
+              id: 'tartaglia-frame-light-blue', 
+              name: 'Tartaglia Frame Light Blue Ver (Shinhlin)', 
+              type: 'css', 
+              bgColor: '#ffffff', 
+              textColor: 'black',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/1XVzWJL3TuxbnmDKTaJ7B7j2i9ORulput',
+              styleContainer: { backgroundColor: 'white' },
+              photoRadius: 'rounded-none',
+              hideFooter: true
+          },
+          { 
+              id: 'tartaglia-frame-dark-blue', 
+              name: 'Tartaglia Frame Dark Blue Ver (Shinhlin)', 
+              type: 'css', 
+              bgColor: '#ffffff', 
+              textColor: 'black',
+              overlayUrl: 'https://lh3.googleusercontent.com/d/1ZSHgFfzeMaEDQSccpt8u-tN4dvJZoVBc',
+              styleContainer: { backgroundColor: 'white' },
+              photoRadius: 'rounded-none',
+              hideFooter: true
+          },
+          { 
               id: 'aestho-fun', 
               name: 'Aestho Fun', 
               type: 'css', 
@@ -880,8 +913,10 @@ const App = () => {
 
       return (
           templateId.includes('citlali') ||
+          templateId.includes('tartaglia') ||
           templateId.includes('genshin') ||
           templateName.includes('citlali') ||
+          templateName.includes('tartaglia') ||
           templateName.includes('genshin') ||
           templateName.includes('teyvat')
       );
