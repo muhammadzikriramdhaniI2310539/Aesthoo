@@ -383,7 +383,20 @@ const App = () => {
             ],
             theme: 'bg-red-50',
             position: 'right',
-            styles: { 0: 'w-[95%]', 1: 'w-[95%]', 2: 'w-[95%]', 3: 'w-[95%]' }
+            // Tartaglia pakai height-based sizing supaya atas dan bawah frame sama-sama penuh.
+            // Width-based sizing sebelumnya kurang terasa karena file PNG Tartaglia punya area transparan lebar.
+            styles: {
+                0: 'w-auto',
+                1: 'w-auto',
+                2: 'w-auto',
+                3: 'w-auto'
+            },
+            heightStyles: {
+                0: 100,
+                1: 126,
+                2: 128,
+                3: 126
+            }
         },
         { 
             id: 'furina', 
@@ -952,6 +965,30 @@ const App = () => {
           }
       }
       return width;
+  };
+
+  const getOverlayPoseIndex = (character, photoIndex) => {
+      if (!character || !Array.isArray(character.overlayImg) || character.overlayImg.length === 0) return 0;
+      return Math.floor(photoIndex / 2) % character.overlayImg.length;
+  };
+
+  const getOverlayHeightPercent = (character, photoIndex) => {
+      if (!character || !character.heightStyles) return null;
+      const poseIndex = getOverlayPoseIndex(character, photoIndex);
+      return character.heightStyles[poseIndex] || null;
+  };
+
+  const getOverlayInlineStyle = (character, photoIndex) => {
+      const heightPercent = getOverlayHeightPercent(character, photoIndex);
+      if (!heightPercent) return {};
+
+      return {
+          height: `${heightPercent}%`,
+          width: 'auto',
+          maxWidth: 'none',
+          objectFit: 'contain',
+          objectPosition: character?.position === 'left' ? 'left bottom' : 'right bottom'
+      };
   };
 
   const getCameraOverlay = (character, shotCount) => {
@@ -1807,14 +1844,24 @@ const App = () => {
 
                   const img = overlays[i];
                   const wClass = getOverlayWidth(selectedCharacterData, photoData.originalIndex);
+                  const heightPercent = getOverlayHeightPercent(selectedCharacterData, photoData.originalIndex);
 
-                  let pct = 0.6;
-                  if (wClass.includes('w-[50%]')) pct = 0.5;
-                  if (wClass.includes('w-[85%]')) pct = 0.85;
-                  if (wClass.includes('w-[95%]')) pct = 0.95;
+                  let ow;
+                  let oh;
 
-                  const ow = vw * pct;
-                  const oh = (img.height / img.width) * ow;
+                  if (heightPercent) {
+                      oh = vh * (Number(heightPercent) / 100);
+                      ow = (img.width / img.height) * oh;
+                  } else {
+                      let pct = 0.6;
+                      const widthMatch = wClass.match(/w-\[(\d+(?:\.\d+)?)%\]/);
+                      if (widthMatch) {
+                          pct = Number(widthMatch[1]) / 100;
+                      }
+
+                      ow = vw * pct;
+                      oh = (img.height / img.width) * ow;
+                  }
 
                   let ox = selectedCharacterData.position === 'right' ? vx + vw - ow : vx;
 
@@ -2161,7 +2208,8 @@ const App = () => {
                                                 className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`}
                                                 style={{
                                                     mixBlendMode: 'normal',
-                                                    filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)`
+                                                    filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)`,
+                                                    ...getOverlayInlineStyle(characterData, photoData.originalIndex)
                                                 }}
                                                 alt="Overlay"
                                             />
@@ -2377,7 +2425,7 @@ const App = () => {
                                         {[...Array(4)].map((_, i) => (
                                             <div key={i} className="flex-1 bg-zinc-50 dark:bg-white relative overflow-hidden border border-zinc-100 shadow-inner">
                                                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
-                                                {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none' }} /> )}
+                                                {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none', ...getOverlayInlineStyle(char, i * 2) }} /> )}
                                             </div>
                                         ))}
                                     </div>
@@ -2431,7 +2479,7 @@ const App = () => {
                               {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
                                   <img crossOrigin="anonymous" src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
                                       className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
-                                      style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)` }} />
+                                      style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)`, ...getOverlayInlineStyle(selectedCharacterData, capturedPhotos.length) }} />
                               )}
                           </div>
                           )}
@@ -2443,7 +2491,7 @@ const App = () => {
                           <div key={i} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-sm relative bg-white flex-shrink-0">
                                <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
                                <CoverPhoto src={photo} className="w-full h-full z-0 relative" alt={`Captured ${i}`} />
-                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Overlay Mini" /> )}
+                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Overlay Mini" /> )}
                           </div>
                       ))}
                       {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-zinc-300 dark:text-zinc-600 bg-white/50 dark:bg-zinc-800/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
@@ -2495,7 +2543,7 @@ const App = () => {
                                             <>
                                               <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
+                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
                                               )}
                                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-6 h-6 md:w-8 md:h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                             </>
@@ -2511,7 +2559,7 @@ const App = () => {
                                             <>
                                               <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal' }} alt="Strip Overlay" />
+                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
                                               )}
                                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                             </>
@@ -2530,7 +2578,7 @@ const App = () => {
                                 return (
                                     <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black dark:hover:ring-white hover:shadow-lg'}`}>
                                         <CoverPhoto src={photo} className="w-full h-full" alt={`Shot ${i}`} />
-                                        {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} alt="Grid Overlay" /> )}
+                                        {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} style={{ ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Grid Overlay" /> )}
                                         {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10 dark:bg-white/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
                                         <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
                                     </div>
