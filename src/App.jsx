@@ -781,6 +781,66 @@ const App = () => {
           styleContainer: { backgroundColor: 'white' },
           photoRadius: 'rounded-2xl',
           hideFooter: false
+      },
+      {
+          id: 'grid-aestho-yeay-1200',
+          layoutId: 'grid-4r',
+          name: 'Aestho Yeay',
+          type: 'css',
+          bgColor: 'transparent',
+          textColor: 'black',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1VSwrR4utvK7JSh30uONwwvoqzrNVNJFC',
+          styleContainer: { backgroundColor: 'white' },
+          photoRadius: 'rounded-none',
+          hideFooter: true
+      },
+      {
+          id: 'grid-aestho-fun-1200',
+          layoutId: 'grid-4r',
+          name: 'Aestho Fun',
+          type: 'css',
+          bgColor: 'transparent',
+          textColor: 'black',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1yLp1pIM8RGJm1L_KiT-E-85DWH3EAlqB',
+          styleContainer: { backgroundColor: 'white' },
+          photoRadius: 'rounded-none',
+          hideFooter: true
+      },
+      {
+          id: 'grid-aestho-flower-1200',
+          layoutId: 'grid-4r',
+          name: 'Aestho Flower',
+          type: 'css',
+          bgColor: 'transparent',
+          textColor: 'black',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1NwB0rgnRrhmO3KYhQY0PNDZ2W_kRNnZu',
+          styleContainer: { backgroundColor: 'white' },
+          photoRadius: 'rounded-none',
+          hideFooter: true
+      },
+      {
+          id: 'grid-aestho-memories-1200',
+          layoutId: 'grid-4r',
+          name: 'Aestho Memories',
+          type: 'css',
+          bgColor: 'transparent',
+          textColor: 'black',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1x4qqdtEAr3N-WW27ke02lRQigJ_gvjLn',
+          styleContainer: { backgroundColor: 'white' },
+          photoRadius: 'rounded-none',
+          hideFooter: true
+      },
+      {
+          id: 'grid-aestho-envelope-1200',
+          layoutId: 'grid-4r',
+          name: 'Aestho Envelope',
+          type: 'css',
+          bgColor: 'transparent',
+          textColor: 'black',
+          overlayUrl: 'https://lh3.googleusercontent.com/d/1jjTnE6LARUWgBo9Bae9u2ERrC8AIf6up',
+          styleContainer: { backgroundColor: 'white' },
+          photoRadius: 'rounded-none',
+          hideFooter: true
       }
   ];
 
