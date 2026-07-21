@@ -345,6 +345,7 @@ const App = () => {
   const filters = [
     { id: 'normal', name: 'Normal', style: 'none' },
     { id: 'bw', name: 'BW', style: 'grayscale(100%) contrast(1.1)' },
+    { id: 'vintage-booth', name: 'Vintage Booth', style: 'grayscale(100%) sepia(30%) contrast(1.22) brightness(0.92) saturate(0.75)' },
     { id: 'warm', name: 'Warm', style: 'sepia(40%) contrast(1.05) saturate(1.2)' },
     { id: 'fade', name: 'Fade', style: 'opacity(0.8) contrast(0.9) brightness(1.1)' },
   ];
