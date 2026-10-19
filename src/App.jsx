@@ -1,14 +1,54 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram, QrCode } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { ArrowRight, ArrowLeft, Plus, Star, Users, Camera, RefreshCw, Sliders, Clock, Download, Check, Loader2, Play, VideoOff, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Printer, LayoutTemplate, Sparkles, Image as ImageIcon, Palette, Flame, Swords, Heart, Cloud, Moon, Zap, Music, Ghost, Sun, Upload, Trash2, Film, ImagePlus, Copy, RotateCcw, RotateCw, ZoomIn, ZoomOut, Instagram, QrCode, Globe, Mic, MicOff } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
+import AdminDashboard from './AdminDashboard';
+import PrivacyPage from './PrivacyPage';
+import TogetherSetupView from './TogetherSetupView';
+import {
+  generatePeerId,
+  sendTogetherSignal,
+  subscribeTogetherSignals,
+  captureTogetherFrame,
+  RTC_CONFIG
+} from './services/togetherRTC';
+import { useTranslation } from './translations';
+import LanguageSlider from './LanguageSlider';
+import {
+  fetchActiveFrames,
+  fetchActiveCharacters,
+  formatDbFrameToTemplate,
+  formatDbCharacterToAppCharacter
+} from './services/dynamicContent';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isValidHttpUrl = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  try {
+    const parsed = new URL(str);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
 
-const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+const createSafeSupabaseClient = () => {
+  const url = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+  const key = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
+  // Cegah error fatal jika url bukan HTTP/HTTPS atau masih placeholder
+  if (!url || !key || !isValidHttpUrl(url) || url.includes('isi_supabase')) {
+    return null;
+  }
+
+  try {
+    return createClient(url, key);
+  } catch (err) {
+    console.warn('Supabase client initialization failed:', err);
+    return null;
+  }
+};
+
+const supabase = createSafeSupabaseClient();
 
 const SHINHLIN_INSTAGRAM_URL = 'https://www.instagram.com/shinhlin/';
 const TRAKTEER_SUPPORT_URL = 'https://trakteer.id/dzev';
@@ -47,33 +87,62 @@ const toCloudinaryMp4Url = (url) => {
   return transformedUrl.replace(/\.(webm|mov|mkv|avi|mp4)(\?.*)?$/i, '.mp4$2');
 };
 
+const EXPIRATION_HOURS = 72;
+const EXPIRATION_MS = EXPIRATION_HOURS * 60 * 60 * 1000;
+
+const formatSummaryDate = (dateString) => {
+  if (!dateString) return 'Waktu tidak tercatat';
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return String(dateString);
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(d);
+  } catch {
+    return String(dateString);
+  }
+};
+
 const SummaryResultPage = () => {
+  const { lang, toggleLanguage, t } = useTranslation();
   const [result, setResult] = useState(null);
   const [isLoadingResult, setIsLoadingResult] = useState(true);
   const [resultError, setResultError] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = window.localStorage.getItem('aestho-theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   const resultId = getSummaryIdFromPath();
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    window.localStorage.setItem('aestho-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
-    const savedTheme = window.localStorage.getItem('aestho-theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-  }, []);
+  const toggleDarkMode = () => {
+    setIsDarkMode((prev) => !prev);
+  };
 
   useEffect(() => {
     const loadResult = async () => {
       if (!resultId) {
-        setResultError('Link hasil tidak valid.');
+        setResultError(t.summary.invalidLink);
         setIsLoadingResult(false);
         return;
       }
 
       if (!supabase) {
-        setResultError('Supabase belum disetting.');
+        setResultError(t.summary.supabaseMissing);
         setIsLoadingResult(false);
         return;
       }
@@ -85,7 +154,7 @@ const SummaryResultPage = () => {
         .single();
 
       if (error || !data) {
-        setResultError('Hasil tidak ditemukan atau sudah tidak tersedia.');
+        setResultError(t.summary.resultNotFound);
         setIsLoadingResult(false);
         return;
       }
@@ -95,165 +164,387 @@ const SummaryResultPage = () => {
     };
 
     loadResult();
-  }, [resultId]);
+  }, [resultId, t.summary.invalidLink, t.summary.supabaseMissing, t.summary.resultNotFound]);
 
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      alert('Link berhasil disalin.');
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      alert('Gagal menyalin link.');
+      alert(t.finalResult.toastCopyFailed || 'Gagal menyalin link.');
     }
   };
 
   if (isLoadingResult) {
     return (
-      <main className="min-h-screen bg-[#f7f5f2] text-black flex items-center justify-center p-6">
-        <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-xl p-8 text-center max-w-sm w-full">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-zinc-500" />
-          <h1 className="font-title text-3xl mb-2">Aestho.</h1>
-          <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 uppercase">Loading your result</p>
-        </div>
-      </main>
+      <div className={isDarkMode ? 'dark' : ''}>
+        <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex items-center justify-center p-6 font-sans">
+          <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-[2.5rem] border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-10 text-center max-w-sm w-full">
+            <Loader2 className="w-9 h-9 animate-spin mx-auto mb-5 text-zinc-500" />
+            <h1 className="font-title text-4xl mb-2 text-zinc-900 dark:text-white">Aestho.</h1>
+            <p className="font-modern text-[10px] tracking-[0.25em] text-zinc-400 dark:text-zinc-500 uppercase">
+              {t.summary.loadingSession}
+            </p>
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (resultError) {
     return (
-      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-6">
-        <div className="bg-zinc-900 rounded-[2rem] border border-zinc-800 shadow-xl p-8 text-center max-w-sm w-full">
-          <h1 className="font-title text-3xl mb-3">Aestho.</h1>
-          <p className="text-sm text-zinc-400 leading-relaxed">{resultError}</p>
-          <a href="/" className="mt-6 inline-flex px-5 py-3 rounded-full bg-white text-black text-[10px] font-mono tracking-widest">MAKE ANOTHER</a>
-        </div>
-      </main>
+      <div className={isDarkMode ? 'dark' : ''}>
+        <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex flex-col items-center justify-center p-6 font-sans relative">
+          <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+            <a
+              href="/"
+              className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+              title="Kembali ke Studio"
+            >
+              <ArrowLeft size={18} />
+            </a>
+            <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+          </div>
+          <div className="absolute top-6 right-6 flex items-center gap-2">
+            <LanguageSlider />
+            <button
+              onClick={toggleDarkMode}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center"
+              title="Toggle Theme"
+            >
+              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl p-8 sm:p-10 text-center max-w-md w-full">
+            <h1 className="font-title text-4xl mb-3 text-zinc-900 dark:text-white">Aestho.</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">{resultError}</p>
+            <a
+              href="/"
+              className="inline-flex px-6 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern tracking-[0.2em] uppercase font-bold hover:opacity-85 transition-opacity"
+            >
+              {t.summary.startNewSession}
+            </a>
+          </div>
+        </main>
+      </div>
     );
   }
 
+  // --- LOGIKA EXPIRED 72 JAM ---
+  const createdAtTime = result?.created_at ? new Date(result.created_at).getTime() : null;
+  const elapsedMs = createdAtTime && !isNaN(createdAtTime) ? Date.now() - createdAtTime : 0;
+  const isExpired = createdAtTime && !isNaN(createdAtTime) && elapsedMs > EXPIRATION_MS;
+  const remainingMs = Math.max(0, EXPIRATION_MS - elapsedMs);
+  const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  // --- TAMPILAN JIKA RESULT EXPIRED (FOTO & VIDEO & TOMBOL DOWNLOAD TIDAK MUNCUL) ---
+  if (isExpired) {
+    return (
+      <div className={isDarkMode ? 'dark' : ''}>
+        <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans relative overflow-hidden transition-colors duration-500">
+          <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
+            <a
+              href="/"
+              className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+              title="Kembali ke Studio"
+            >
+              <ArrowLeft size={18} />
+            </a>
+            <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+          </div>
+          <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+            <LanguageSlider />
+            <button
+              onClick={toggleDarkMode}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center"
+              title="Toggle Theme"
+            >
+              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
+
+          <div className="absolute top-0 left-0 w-80 h-80 bg-zinc-200/40 dark:bg-zinc-800/20 blur-3xl rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />
+          <div className="relative z-10 bg-white/90 dark:bg-zinc-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-7 sm:p-10 text-center max-w-md w-full">
+            <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 mx-auto mb-4 flex items-center justify-center">
+              <Clock className="w-7 h-7 opacity-70" />
+            </div>
+
+            <p className="font-modern text-[10px] tracking-[0.25em] uppercase text-zinc-400 dark:text-zinc-500 mb-2">
+              {t.summary.sessionExpiredBadge}
+            </p>
+
+            <h1 className="font-title text-4xl sm:text-5xl mb-2 text-zinc-900 dark:text-white">
+              {t.summary.sessionExpiredTitle}
+            </h1>
+
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">
+              {t.summary.sessionExpiredDesc}
+            </p>
+
+            <div className="bg-zinc-50 dark:bg-zinc-950/60 rounded-2xl p-4 border border-zinc-100 dark:border-zinc-800 mb-6 text-left font-mono text-[11px] flex flex-col gap-1.5 text-zinc-600 dark:text-zinc-400">
+              <div className="flex justify-between">
+                <span className="text-zinc-400">{t.summary.resultId}</span>
+                <span className="font-bold text-zinc-800 dark:text-zinc-200">{result.id}</span>
+              </div>
+              {result.template_name && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">{t.summary.frameStyle}</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{result.template_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-zinc-400">{t.summary.createdAtLabel}</span>
+                <span>{formatSummaryDate(result.created_at)}</span>
+              </div>
+              <div className="flex justify-between text-amber-600 dark:text-amber-400 font-semibold pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                <span>{t.summary.statusLabel}</span>
+                <span>{t.summary.expiredStatus}</span>
+              </div>
+            </div>
+
+            <a
+              href="/"
+              className="w-full inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-[0.2em] uppercase hover:opacity-90 active:scale-95 transition-all shadow-md mb-3"
+            >
+              <RefreshCw className="w-4 h-4" /> {t.summary.makeAnotherBtn}
+            </a>
+
+            <a
+              href="/privacy"
+              className="text-[10px] font-mono text-zinc-400 hover:text-black dark:hover:text-white underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 transition-colors"
+            >
+              {t.summary.privacyLink}
+            </a>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // --- TAMPILAN JIKA RESULT MASIH AKTIF (RESPONSIVE DI MOBILE & DESKTOP) ---
   const mp4Url = result.video_mp4_url || toCloudinaryMp4Url(result.video_url);
 
   return (
-    <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex flex-col items-center justify-center p-4 md:p-8 overflow-hidden relative transition-colors duration-500">
-      {/* Background Decorative Blurs */}
-      <div className="absolute top-0 left-0 w-72 h-72 bg-pink-200/40 dark:bg-pink-500/10 blur-3xl rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-200/40 dark:bg-blue-500/10 blur-3xl rounded-full translate-x-20 translate-y-20 pointer-events-none" />
-
-      <section className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8 md:gap-12 items-center">
-        {/* Left Panel: Text & Actions */}
-        <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl rounded-[2rem] md:rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-2xl p-8 md:p-10 flex flex-col justify-center">
-          <div className="mb-6">
-            <p className="font-modern text-[10px] tracking-[0.3em] text-zinc-400 dark:text-zinc-500 uppercase mb-3 flex items-center gap-2">
-              <Star className="w-3 h-3" /> Aestho Photobooth
-            </p>
-           <h1
-                className="text-6xl md:text-7xl leading-[0.95] mb-5 text-zinc-900 dark:text-white font-normal"
-            style={{ fontFamily: "'Great Vibes', cursive" }}
-            >
-            Your Masterpiece <br />
-            is Ready 
-            </h1>
-            <p className="text-sm md:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Save your captured moments. Download your high-res JPG strip, get the Live Moment video, or share this page directly with your friends.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <a
-              href={result.photo_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              download="Aestho-Strip.jpg"
-              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
-            >
-              <Download className="w-4 h-4" /> STATIC JPG
-            </a>
-
-            {mp4Url && (
-              <a
-                href={mp4Url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download="Aestho-Live-Moment.mp4"
-                className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
-              >
-                <Film className="w-4 h-4" /> LIVE MOMENT
-              </a>
-            )}
-
-            <button
-              onClick={handleCopyLink}
-              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-black dark:text-white text-[10px] font-modern font-bold tracking-widest hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 transition-all shadow-sm"
-            >
-              <Copy className="w-4 h-4" /> COPY LINK
-            </button>
-            
+    <div className={isDarkMode ? 'dark' : ''}>
+      <main className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] text-black dark:text-white flex flex-col items-center justify-start lg:justify-center p-4 sm:p-6 lg:p-10 overflow-x-hidden relative transition-colors duration-500 font-sans">
+        {/* Top Controls: Switch Language & Dark Mode */}
+        <div className="w-full max-w-6xl flex justify-between items-center mb-4 relative z-20">
+          <div className="flex items-center gap-3">
             <a
               href="/"
-              className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white text-[10px] font-modern font-bold tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all"
+              className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+              title="Kembali ke Studio"
             >
-              <RefreshCw className="w-4 h-4" /> NEW SESSION
+              <ArrowLeft size={18} />
+            </a>
+            <a
+              href="/"
+              className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none hover:opacity-80 transition-opacity"
+            >
+              Aestho.
             </a>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1">
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tracking-widest uppercase">
-              Result ID: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{result.id}</span>
-            </p>
-            {result.template_name && (
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tracking-widest uppercase">
-                Frame Style: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{result.template_name}</span>
-              </p>
-            )}
+          <div className="flex items-center gap-2">
+            <LanguageSlider />
 
+            <button
+              onClick={toggleDarkMode}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center"
+              title="Toggle Theme"
+            >
+              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
           </div>
         </div>
 
-        {/* Right Panel: Display Results */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-          {/* JPG Preview */}
-          <div className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-xl p-5 flex flex-col gap-4 transform transition-transform duration-300 hover:-translate-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <ImageIcon className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
-              <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-500 dark:text-zinc-400 text-center font-bold">STATIC RESULT</p>
+        {/* Decorative blurs */}
+        <div className="absolute top-0 left-0 w-80 h-80 bg-pink-100/40 dark:bg-pink-500/10 blur-3xl rounded-full -translate-x-24 -translate-y-24 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-100/40 dark:bg-blue-500/10 blur-3xl rounded-full translate-x-24 translate-y-24 pointer-events-none" />
+
+        {/* Main Container: Vertikal di Mobile, 2 Kolom di Desktop */}
+        <section className="relative z-10 w-full max-w-6xl flex flex-col lg:grid lg:grid-cols-[0.9fr_1.1fr] gap-6 sm:gap-8 lg:gap-10 items-start lg:items-center my-auto py-4">
+          {/* Left Panel: Informasi & Tombol Aksi */}
+          <div className="w-full bg-white/85 dark:bg-zinc-900/65 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] border border-white/60 dark:border-zinc-800 shadow-xl sm:shadow-2xl p-6 sm:p-8 lg:p-9 flex flex-col justify-center">
+            {/* Header Info */}
+            <div className="mb-5 sm:mb-6">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="font-modern text-[9px] tracking-[0.25em] text-zinc-400 dark:text-zinc-500 uppercase flex items-center gap-1.5">
+                  <Star className="w-3 h-3 text-zinc-500" /> Aestho Photobooth
+                </span>
+                <span className="h-3 w-px bg-zinc-300 dark:bg-zinc-700" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 font-mono text-[9px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {t.summary.activeBadge}
+                </span>
+              </div>
+
+              <h1
+                className="text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-3 text-zinc-900 dark:text-white font-title"
+              >
+                {t.summary.masterpieceTitle}
+              </h1>
+
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                {t.summary.masterpieceDesc}
+              </p>
             </div>
-            <div className="bg-white dark:bg-zinc-950 p-2 rounded-[2rem] shadow-inner border border-zinc-100 dark:border-zinc-800">
-              <img
-                src={result.photo_url}
-                alt="Aestho Photobooth Result"
-                className="max-h-[60vh] w-auto mx-auto rounded-[1.5rem] object-contain"
-              />
+
+            {/* Retention Notice Box (Available for 72 hours) */}
+            <div className="mb-5 p-3.5 sm:p-4 rounded-2xl bg-zinc-50/80 dark:bg-zinc-950/60 border border-zinc-200/60 dark:border-zinc-800/80 flex items-start gap-2.5">
+              <Clock className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div className="flex-1 text-xs leading-relaxed">
+                <div className="flex items-center justify-between font-mono text-[10px] text-zinc-500 dark:text-zinc-400 mb-0.5">
+                  <span className="font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
+                    {t.summary.available72Hours}
+                  </span>
+                  {createdAtTime && !isNaN(createdAtTime) && (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                      {t.summary.remainingText(remainingHours, remainingMins)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                  {t.summary.retentionNotice}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5 mb-5">
+              <a
+                href={result.photo_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={`Aestho-Strip-${result.id}.jpg`}
+                className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-[0.16em] uppercase hover:opacity-90 active:scale-95 transition-all shadow-md"
+              >
+                <Download className="w-4 h-4" /> {t.summary.downloadJpgBtn}
+              </a>
+
+              {mp4Url && (
+                <a
+                  href={mp4Url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={`Aestho-Live-Moment-${result.id}.mp4`}
+                  className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-[10px] font-modern font-bold tracking-[0.16em] uppercase hover:opacity-90 active:scale-95 transition-all shadow-md"
+                >
+                  <Film className="w-4 h-4" /> {t.summary.downloadVideoBtn}
+                </a>
+              )}
+
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-black dark:text-white text-[10px] font-modern font-bold tracking-[0.16em] uppercase hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-95 transition-all shadow-sm"
+              >
+                {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                {copiedLink ? t.summary.linkCopiedBtn : t.summary.copyLinkBtn}
+              </button>
+
+              <a
+                href="/"
+                className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-[10px] font-modern font-bold tracking-[0.16em] uppercase hover:bg-zinc-200 dark:hover:bg-zinc-800 active:scale-95 transition-all"
+              >
+                <RefreshCw className="w-4 h-4" /> {t.summary.makeAnotherBtn}
+              </a>
+            </div>
+
+            {/* Session Metadata Details */}
+            <div className="pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase">
+              <div>
+                {t.summary.resultId}: <span className="font-bold text-zinc-700 dark:text-zinc-200">{result.id}</span>
+              </div>
+              {result.template_name && (
+                <div>
+                  {t.summary.frameStyle}: <span className="font-bold text-zinc-700 dark:text-zinc-200">{result.template_name}</span>
+                </div>
+              )}
+              {result.layout_id && (
+                <div>
+                  {t.summary.layoutLabel}: <span className="font-bold text-zinc-700 dark:text-zinc-200">{result.layout_id === 'grid-4r' ? 'Poster 4R' : 'Classic Strip'}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-[10px] font-mono text-zinc-400 dark:text-zinc-500">
+              <span>{t.summary.retentionPolicyLabel}</span>
+              <a
+                href="/privacy"
+                className="hover:text-black dark:hover:text-white underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 transition-colors"
+              >
+                {t.summary.privacyLink}
+              </a>
             </div>
           </div>
 
-          {/* MP4 Preview */}
-          {result.video_url && (
-            <div className="bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 dark:border-zinc-800 shadow-xl p-5 flex flex-col gap-4 transform transition-transform duration-300 hover:-translate-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <p className="font-modern text-[10px] tracking-[0.2em] text-zinc-500 dark:text-zinc-400 text-center font-bold">LIVE MOMENT</p>
+          {/* Right Panel: Display Media (Stack Vertikal di Mobile, 2 Kolom di Tablet/Desktop) */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 items-start">
+            {/* Static JPG Card */}
+            <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md rounded-3xl border border-white/60 dark:border-zinc-800 shadow-lg sm:shadow-xl p-4 sm:p-5 flex flex-col gap-3">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center gap-1.5 text-zinc-700 dark:text-zinc-200 font-mono text-xs font-bold uppercase">
+                  <ImageIcon className="w-3.5 h-3.5 text-zinc-500" />
+                  <span>{t.summary.staticResultJpg}</span>
+                </div>
+                <p className="text-[10px] text-zinc-400 mt-0.5">
+                  {t.summary.staticResultDesc}
+                </p>
               </div>
-              <div className="bg-black p-2 rounded-[2rem] shadow-inner border border-zinc-800 relative overflow-hidden flex-1 flex flex-col">
-                <video
-                  src={result.video_url}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  controls
-                  className="w-full h-full max-h-[60vh] rounded-[1.5rem] object-contain"
+              <div className="bg-white dark:bg-zinc-950 p-2 sm:p-2.5 rounded-2xl shadow-inner border border-zinc-100 dark:border-zinc-800 flex items-center justify-center">
+                <img
+                  src={result.photo_url}
+                  alt={`Aestho Strip ${result.id}`}
+                  className="max-h-[50vh] sm:max-h-[55vh] w-auto mx-auto rounded-xl object-contain"
+                  loading="eager"
                 />
               </div>
             </div>
-          )}
-        </div>
-      </section>
-    </main>
+
+            {/* Live Moment MP4 Card */}
+            {result.video_url && (
+              <div className="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md rounded-3xl border border-white/60 dark:border-zinc-800 shadow-lg sm:shadow-xl p-4 sm:p-5 flex flex-col gap-3">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center gap-1.5 text-zinc-700 dark:text-zinc-200 font-mono text-xs font-bold uppercase">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span>{t.summary.liveMomentVideo}</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    {t.summary.liveMomentDesc}
+                  </p>
+                </div>
+                <div className="bg-black p-2 sm:p-2.5 rounded-2xl shadow-inner border border-zinc-800 flex items-center justify-center overflow-hidden">
+                  <video
+                    src={result.video_url}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                    className="w-full h-full max-h-[50vh] sm:max-h-[55vh] rounded-xl object-contain"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
   );
 };
 
 const App = () => {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin-aestho')) {
+    return <AdminDashboard supabase={supabase} />;
+  }
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/id/summary')) {
     return <SummaryResultPage />;
+  }
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/privacy')) {
+    return <PrivacyPage />;
   }
   // ==================================================================================
   // 1. KONFIGURASI DATA
@@ -330,14 +621,21 @@ const App = () => {
       name: 'Aestho Original', 
       desc: 'Minimalist blank canvas.', 
       icon: <Star className="w-6 h-6 md:w-8 md:h-8"/>, 
-      style: 'bg-white text-black border-gray-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-700' 
+      style: 'bg-white text-black border-gray-200 dark:bg-zinc-900 dark:text-white dark:border-zinc-700'
     },
     { 
       id: 'character', 
       name: 'Character Collab', 
       desc: 'Pose with idols & anime chars.', 
       icon: <Users className="w-6 h-6 md:w-8 md:h-8"/>, 
-      style: 'bg-black text-white border-black hover:shadow-xl dark:bg-zinc-800 dark:border-zinc-600' 
+      style: 'bg-black text-white border-black hover:shadow-xl dark:bg-zinc-800 dark:border-zinc-600'
+    },
+    {
+      id: 'together',
+      name: 'Aestho Together',
+      desc: 'Capture moments, even miles apart.',
+      icon: <Globe className="w-6 h-6 md:w-8 md:h-8"/>,
+      style: 'bg-white text-black border-gray-200 hover:shadow-xl dark:bg-zinc-900 dark:text-white dark:border-zinc-700'
     }
   ];
 
@@ -655,7 +953,7 @@ const App = () => {
               textColor: '#1e40af', 
               styleContainer: { background: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', border: '4px solid #bfdbfe' },
               photoRadius: 'rounded-lg',
-              sticker: <img crossOrigin="anonymous" src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-32 h-auto opacity-80" alt="Genshin" />
+              sticker: <img src="https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/2560px-Genshin_Impact_logo.svg.png" className="w-32 h-auto opacity-80" alt="Genshin" />
           },
           { 
               id: 'frame-hsr', 
@@ -665,7 +963,7 @@ const App = () => {
               textColor: '#e0e7ff', 
               styleContainer: { background: 'linear-gradient(to bottom, #0f172a, #312e81)', border: '4px solid rgba(99, 102, 241, 0.3)' },
               photoRadius: 'rounded-sm',
-              sticker: <img crossOrigin="anonymous" src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-24 h-auto opacity-90 invert" alt="HSR" />
+              sticker: <img src="https://preview.redd.it/what-is-the-font-for-the-hsr-logo-v0-06d75o5cvn3b1.png?width=1290&format=png&auto=webp&s=6f720d993f23ba56cb4ab7931320f091d45c9973" className="w-24 h-auto opacity-90 invert" alt="HSR" />
           },
           { 
               id: 'frame-jjk', 
@@ -874,10 +1172,53 @@ const App = () => {
       return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   };
 
+  const { lang, toggleLanguage, t } = useTranslation();
   const [isDarkMode, setIsDarkMode] = useState(getInitialDarkMode);
-  const [currentView, setCurrentView] = useState('home'); 
-  const [selectedLayout, setSelectedLayout] = useState(null);
-  const [selectedMode, setSelectedMode] = useState(null);
+  const isTogetherPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/together');
+  const initialTogetherCode = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    if (window.location.pathname.startsWith('/together')) {
+      return window.location.pathname.replace('/together', '').replace(/^\//, '').trim().toUpperCase();
+    }
+    return '';
+  }, []);
+
+  const [currentView, setCurrentView] = useState(() => (isTogetherPath ? 'together-setup' : 'home')); 
+  const [selectedLayout, setSelectedLayout] = useState(() => (isTogetherPath ? 'classic-white' : null));
+  const [selectedMode, setSelectedMode] = useState(() => (isTogetherPath ? 'together' : null));
+  const [isViewTransitioning, setIsViewTransitioning] = useState(false);
+
+  // Jika guest masuk lewat URL langsung (/together/ASTH-XXXX), ambil layout_id room dari Supabase
+  useEffect(() => {
+    if (initialTogetherCode && supabase) {
+      supabase
+        .from('aestho_together_rooms')
+        .select('layout_id')
+        .eq('id', initialTogetherCode)
+        .single()
+        .then(({ data }) => {
+          if (data?.layout_id) {
+            setSelectedLayout(data.layout_id);
+            setSelectedStripPhotos(Array(data.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialTogetherCode, supabase]);
+
+  // --- AESTHO TOGETHER REALTIME & WEBRTC STATE ---
+  const [togetherRoomId, setTogetherRoomId] = useState(() => initialTogetherCode || '');
+  const [togetherRole, setTogetherRole] = useState(() => (initialTogetherCode ? 'guest' : null));
+  const [togetherPeerConnected, setTogetherPeerConnected] = useState(false);
+  const togetherPeerId = useMemo(() => generatePeerId(), []);
+  const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const remoteStreamRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const dataChannelRef = useRef(null);
+  const togetherPendingIce = useRef([]);
+  const hasRemoteDescRef = useRef(false);
+  const [isMicOn, setIsMicOn] = useState(true);
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(stripTemplates[0]);
@@ -961,18 +1302,126 @@ const App = () => {
   
   const staticStripRef = useRef(null); // Ref untuk export Canvas ke JPG
   const baseStripRef = useRef(null); // Ref untuk base background saat render Video
+  const togetherRecordIntervalRef = useRef(null);
+  const togetherCanvasRef = useRef(null);
 
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
 
+  // Dynamic Content State (Frames & Characters from Supabase)
+  const [dynamicTemplates, setDynamicTemplates] = useState([]);
+  const [dynamicCharacters, setDynamicCharacters] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFrames = async () => {
+      if (!supabase) return;
+      try {
+        const framesData = await fetchActiveFrames(supabase);
+        if (isMounted && Array.isArray(framesData) && framesData.length > 0) {
+          const formatted = framesData.map(formatDbFrameToTemplate);
+          setDynamicTemplates(formatted);
+          console.log(`[Aestho] ${formatted.length} frame dinamis dari Supabase berhasil dimuat.`);
+        }
+      } catch (err) {
+        console.warn('[Aestho] Fallback: Gagal memuat frame dinamis dari Supabase:', err);
+      }
+    };
+
+    const loadCharacters = async () => {
+      if (!supabase) return;
+      try {
+        const charsData = await fetchActiveCharacters(supabase);
+        if (isMounted && Array.isArray(charsData) && charsData.length > 0) {
+          const formatted = charsData.map(formatDbCharacterToAppCharacter);
+          setDynamicCharacters(formatted);
+          console.log(`[Aestho] ${formatted.length} karakter dinamis dari Supabase berhasil dimuat.`);
+        }
+      } catch (err) {
+        console.warn('[Aestho] Fallback: Gagal memuat karakter dinamis dari Supabase:', err);
+      }
+    };
+
+    loadFrames();
+    loadCharacters();
+
+    return () => { isMounted = false; };
+  }, []);
+
+  // Merged Templates (Hardcoded + Dynamic dari Supabase)
+  const allTemplates = useMemo(() => {
+    return [...stripTemplates, ...dynamicTemplates];
+  }, [dynamicTemplates]);
+
+  // Merged Anime Series & Characters (Hardcoded + Dynamic)
+  const allAnimeOptions = useMemo(() => {
+    if (!dynamicCharacters || dynamicCharacters.length === 0) {
+      return animeOptions;
+    }
+
+    const cloned = animeOptions.map((series) => ({
+      ...series,
+      characters: [...series.characters]
+    }));
+
+    const extraSeriesMap = {};
+
+    dynamicCharacters.forEach((dynChar) => {
+      const seriesName = (dynChar.series || 'Custom').trim();
+      const lower = seriesName.toLowerCase();
+
+      if (lower.includes('genshin')) {
+        const genshin = cloned.find((s) => s.id === 'genshin');
+        if (genshin) genshin.characters.push(dynChar);
+        return;
+      }
+
+      if (lower.includes('honkai') || lower.includes('star rail') || lower === 'hsr') {
+        const hsr = cloned.find((s) => s.id === 'hsr');
+        if (hsr) hsr.characters.push(dynChar);
+        return;
+      }
+
+      if (lower.includes('jujutsu') || lower.includes('jjk')) {
+        const jjk = cloned.find((s) => s.id === 'jjk');
+        if (jjk) jjk.characters.push(dynChar);
+        return;
+      }
+
+      const existing = cloned.find((s) => s.name.toLowerCase() === lower);
+      if (existing) {
+        existing.characters.push(dynChar);
+        return;
+      }
+
+      if (!extraSeriesMap[seriesName]) {
+        extraSeriesMap[seriesName] = {
+          id: `custom-series-${seriesName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+          name: seriesName,
+          logoUrl: 'https://placehold.co/400x200/transparent/333333?text=' + encodeURIComponent(seriesName),
+          color: 'hover:shadow-pink-400/50',
+          hoverText: 'group-hover:text-pink-500',
+          icon: <Sparkles className="text-pink-500" />,
+          characters: []
+        };
+      }
+      extraSeriesMap[seriesName].characters.push(dynChar);
+    });
+
+    return [...cloned, ...Object.values(extraSeriesMap)];
+  }, [dynamicCharacters]);
+
   const currentLayoutData = layouts.find(l => l.id === selectedLayout);
-  const currentAnimeData = animeOptions.find(a => a.id === selectedAnime);
+  const currentAnimeData = allAnimeOptions.find(a => a.id === selectedAnime);
   const selectedCharacterData = currentAnimeData?.characters.find(c => c.id === selectedFrame);
 
   const isGenshinTemplate = (template = {}) => {
       const templateId = String(template.id || '').toLowerCase();
       const templateName = String(template.name || '').toLowerCase();
+      const templateCategory = String(template.category || '').toLowerCase();
 
       return (
+          templateCategory === 'genshin' ||
           templateId.includes('citlali') ||
           templateId.includes('tartaglia') ||
           templateId.includes('genshin') ||
@@ -984,17 +1433,28 @@ const App = () => {
   };
 
   const getTemplateCategoryItems = (category) => {
-      const validTemplates = stripTemplates.filter(t => t.layoutId === selectedLayout);
+      const cat = String(category || '').toLowerCase().trim();
+      const curLayout = String(selectedLayout || 'classic-white').toLowerCase().trim();
 
-      if (category === 'genshin') {
-          return validTemplates.filter(isGenshinTemplate);
+      // Filter: sertakan template yang spesifik untuk curLayout ATAU universal (tanpa layoutId spesifik)
+      const validTemplates = allTemplates.filter((t) => {
+          if (!t.layoutId) return true; // Universal: bisa digunakan di layout mana pun
+          return String(t.layoutId).toLowerCase().trim() === curLayout;
+      });
+
+      // Tab GENSHIN: semua frame dengan category/nama genshin (Citlali, Tartaglia, dll.)
+      if (cat === 'genshin') {
+          const genshinList = validTemplates.filter(isGenshinTemplate);
+          return genshinList.length > 0 ? genshinList : allTemplates.filter(isGenshinTemplate);
       }
 
-      if (category === 'aestho') {
-          return validTemplates.filter(t => !isGenshinTemplate(t));
+      // Tab AESTHO: semua frame selain genshin (termasuk category aestho & custom)
+      if (cat === 'aestho') {
+          const aesthoList = validTemplates.filter((t) => !isGenshinTemplate(t));
+          return aesthoList.length > 0 ? aesthoList : allTemplates.filter((t) => !isGenshinTemplate(t));
       }
 
-      return [];
+      return validTemplates;
   };
 
   const visibleTemplateOptions = selectedTemplateCategory ? getTemplateCategoryItems(selectedTemplateCategory) : [];
@@ -1044,11 +1504,18 @@ const App = () => {
 
   const getOverlayImage = (character, photoIndex) => {
     if (!character || !character.overlayImg) return null;
+    let img = null;
     if (Array.isArray(character.overlayImg)) {
         const poseIndex = Math.floor(photoIndex / 2);
-        return character.overlayImg[poseIndex % character.overlayImg.length];
+        img = character.overlayImg[poseIndex % character.overlayImg.length];
+    } else {
+        img = character.overlayImg;
     }
-    return character.overlayImg;
+    if (!img || (typeof img === 'string' && img.trim() === '')) {
+        const name = encodeURIComponent(character.name || 'Character');
+        return `https://placehold.co/600x800/transparent/3b82f6?text=${name}+Pose`;
+    }
+    return img;
   };
 
   const getOverlayWidth = (character, photoIndex) => {
@@ -1089,12 +1556,20 @@ const App = () => {
 
   const getCameraOverlay = (character, shotCount) => {
       if (!character || !character.overlayImg) return null;
+      let img = null;
       if (Array.isArray(character.overlayImg)) {
           const poseIndex = Math.floor(shotCount / 2);
-          return character.overlayImg[poseIndex % character.overlayImg.length];
+          img = character.overlayImg[poseIndex % character.overlayImg.length];
+      } else {
+          img = character.overlayImg;
       }
-      return character.overlayImg;
-  }
+      if (!img || (typeof img === 'string' && img.trim() === '')) {
+          const name = encodeURIComponent(character.name || 'Character');
+          return `https://placehold.co/600x800/transparent/3b82f6?text=${name}+Pose`;
+      }
+      return img;
+  };
+
 
   // --- CAMERA & RECORDING LOGIC ---
   const [stream, setStream] = useState(null);
@@ -1109,14 +1584,44 @@ const App = () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: window.innerWidth < 768 ? 960 : 1280 },
-          height: { ideal: window.innerWidth < 768 ? 720 : 960 }
-        },
-        audio: false
-      });
+      const shouldEnableAudio = selectedMode === 'together';
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: window.innerWidth < 768 ? 960 : 1280 },
+            height: { ideal: window.innerWidth < 768 ? 720 : 960 }
+          },
+          audio: shouldEnableAudio ? {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } : false
+        });
+      } catch (audioErr) {
+        if (shouldEnableAudio) {
+          console.warn("Microphone not available, falling back to video only:", audioErr);
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'user',
+              width: { ideal: window.innerWidth < 768 ? 960 : 1280 },
+              height: { ideal: window.innerWidth < 768 ? 720 : 960 }
+            },
+            audio: false
+          });
+        } else {
+          throw audioErr;
+        }
+      }
+
+      // Pastikan audio track disinkronkan dengan state isMicOn
+      if (shouldEnableAudio) {
+        mediaStream.getAudioTracks().forEach(track => {
+          track.enabled = isMicOn;
+        });
+      }
+
       setStream(mediaStream);
     } catch (err) {
       console.error("Camera Error:", err);
@@ -1124,6 +1629,38 @@ const App = () => {
     } finally {
       setIsCameraLoading(false);
     }
+  };
+
+  const toggleMic = async () => {
+    if (!stream) return;
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        const audioTrack = micStream.getAudioTracks()[0];
+        if (audioTrack) {
+          stream.addTrack(audioTrack);
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.addTrack(audioTrack, stream);
+          }
+          setIsMicOn(true);
+          showToast('Mikrofon aktif');
+        }
+      } catch (err) {
+        console.error('Failed to enable mic:', err);
+        showToast('Gagal menyalakan mikrofon: izin ditolak');
+      }
+      return;
+    }
+
+    const nextState = !isMicOn;
+    audioTracks.forEach(track => {
+      track.enabled = nextState;
+    });
+    setIsMicOn(nextState);
+    showToast(nextState ? 'Mikrofon aktif' : 'Mikrofon dimatikan');
   };
 
   useEffect(() => {
@@ -1138,7 +1675,7 @@ const App = () => {
     return () => {
       if (stream) stream.getTracks().forEach(track => track.stop());
     };
-  }, [currentView, useMockCamera]);
+  }, [currentView, useMockCamera, selectedMode]);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -1149,7 +1686,298 @@ const App = () => {
     }
   }, [stream]);
 
-  const triggerTransition = (callback) => { callback(); };
+  // --- AESTHO TOGETHER: WEBRTC & REALTIME SESSION EFFECT ---
+  const copyTogetherInviteLink = async () => {
+    if (!togetherRoomId) return;
+    const url = `${window.location.origin}/together/${togetherRoomId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link room disalin ke clipboard!');
+    } catch {
+      showToast('Gagal menyalin link.');
+    }
+  };
+
+  const startTogetherCountdown = (duration) => {
+    if (isCountingDown) return;
+    setIsCountingDown(true);
+    setCountdownValue(duration);
+    startRecording();
+    const timerInterval = setInterval(() => {
+      setCountdownValue((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerInterval);
+          takePhoto();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    if (currentView !== 'camera-session' || selectedMode !== 'together' || !togetherRoomId || !stream) {
+      return;
+    }
+
+    let isMounted = true;
+    const pc = new RTCPeerConnection(RTC_CONFIG);
+    peerConnectionRef.current = pc;
+    hasRemoteDescRef.current = false;
+    togetherPendingIce.current = [];
+
+    // Helper untuk memproses foto sinkronisasi dari Host
+    const handleIncomingSyncedPhoto = (payload) => {
+      if (!isMounted) return;
+      setIsCountingDown(false);
+      stopRecording();
+      if (payload.photoUrl) {
+        setCapturedPhotos((prev) => {
+          const updated = [...prev];
+          if (typeof payload.photoIndex === 'number') {
+            updated[payload.photoIndex] = payload.photoUrl;
+          } else if (!updated.includes(payload.photoUrl)) {
+            updated.push(payload.photoUrl);
+          }
+          return updated;
+        });
+      }
+      if (payload.isFinished || (typeof payload.photoIndex === 'number' && payload.photoIndex >= MAX_PHOTOS - 1)) {
+        triggerTransition(() => setCurrentView('result-selection'));
+      }
+    };
+
+    // Setup WebRTC DataChannel (P2P direct channel untuk sinkronisasi instan)
+    if (togetherRole === 'host') {
+      try {
+        const dc = pc.createDataChannel('together-photos');
+        dataChannelRef.current = dc;
+        dc.onopen = () => console.log('[Together] DataChannel opened on Host');
+        dc.onclose = () => console.log('[Together] DataChannel closed on Host');
+      } catch (e) {
+        console.warn('[Together] DataChannel create error:', e);
+      }
+    }
+
+    pc.ondatachannel = (event) => {
+      const dc = event.channel;
+      dataChannelRef.current = dc;
+      dc.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'photo-synced') {
+            handleIncomingSyncedPhoto(data);
+          } else if (data.type === 'session-finished') {
+            if (data.layout_id) {
+              setSelectedLayout(data.layout_id);
+              setSelectedStripPhotos(Array(data.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+            setIsCountingDown(false);
+            stopRecording();
+            triggerTransition(() => setCurrentView('result-selection'));
+          } else if (data.type === 'sync-layout') {
+            if (data.layout_id) {
+              setSelectedLayout(data.layout_id);
+              setSelectedStripPhotos(Array(data.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+          }
+        } catch (err) {
+          console.error('[Together] DataChannel message error:', err);
+        }
+      };
+    };
+
+    stream.getTracks().forEach((track) => {
+      try {
+        pc.addTrack(track, stream);
+      } catch (err) {
+        console.warn('Gagal menambah track lokal:', err);
+      }
+    });
+
+    pc.ontrack = (event) => {
+      if (!isMounted) return;
+      if (event.streams && event.streams[0]) {
+        remoteStreamRef.current = event.streams[0];
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          remoteVideoRef.current.onloadedmetadata = () => {
+            remoteVideoRef.current.play().catch((e) => console.error('Remote play blocked:', e));
+          };
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = event.streams[0];
+          remoteAudioRef.current.play().catch((e) => console.error('Remote audio blocked:', e));
+        }
+        setTogetherPeerConnected(true);
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && togetherRoomId) {
+        sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'ice-candidate', event.candidate.toJSON());
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (!isMounted) return;
+      if (pc.connectionState === 'connected') {
+        setTogetherPeerConnected(true);
+      } else if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+        setTogetherPeerConnected(false);
+      }
+    };
+
+    const unsubscribeSignals = subscribeTogetherSignals(
+      supabase,
+      togetherRoomId,
+      togetherPeerId,
+      async (signal) => {
+        if (!isMounted) return;
+        const { type, payload } = signal;
+
+        try {
+          if (type === 'guest-ready' && togetherRole === 'host') {
+            if (pc.signalingState === 'stable' && pc.connectionState !== 'connected') {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'offer', {
+                sdp: offer.sdp,
+                type: offer.type,
+                layout_id: selectedLayout,
+              });
+            }
+          } else if (type === 'host-ready' && togetherRole === 'guest') {
+            if (payload?.layout_id) {
+              setSelectedLayout(payload.layout_id);
+              setSelectedStripPhotos(Array(payload.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+            if (pc.connectionState !== 'connected') {
+              sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'guest-ready', {});
+            }
+          } else if (type === 'offer' && togetherRole === 'guest') {
+            if (payload?.layout_id) {
+              setSelectedLayout(payload.layout_id);
+              setSelectedStripPhotos(Array(payload.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+            if (pc.signalingState !== 'stable') {
+              await Promise.all([
+                pc.setLocalDescription({ type: 'rollback' }).catch(() => {}),
+              ]);
+            }
+            await pc.setRemoteDescription(new RTCSessionDescription(payload));
+            hasRemoteDescRef.current = true;
+            for (const cand of togetherPendingIce.current) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+            }
+            togetherPendingIce.current = [];
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'answer', {
+              sdp: answer.sdp,
+              type: answer.type,
+            });
+          } else if (type === 'answer' && togetherRole === 'host') {
+            if (pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload));
+              hasRemoteDescRef.current = true;
+              for (const cand of togetherPendingIce.current) {
+                try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+              }
+              togetherPendingIce.current = [];
+            }
+          } else if (type === 'ice-candidate') {
+            if (hasRemoteDescRef.current && pc.remoteDescription) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(payload)); } catch (e) {}
+            } else {
+              togetherPendingIce.current.push(payload);
+            }
+          } else if (type === 'capture-trigger') {
+            startTogetherCountdown(payload.duration || timerDuration);
+          } else if (type === 'sync-filter') {
+            if (payload.filterId) {
+              const matchedFilter = filters.find((f) => f.id === payload.filterId);
+              if (matchedFilter) setCurrentFilter(matchedFilter);
+            }
+          } else if (type === 'sync-layout') {
+            if (payload?.layout_id) {
+              setSelectedLayout(payload.layout_id);
+              setSelectedStripPhotos(Array(payload.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+          } else if (type === 'photo-synced') {
+            handleIncomingSyncedPhoto(payload);
+          } else if (type === 'session-finished') {
+            if (payload?.layout_id) {
+              setSelectedLayout(payload.layout_id);
+              setSelectedStripPhotos(Array(payload.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+            setIsCountingDown(false);
+            stopRecording();
+            triggerTransition(() => setCurrentView('result-selection'));
+          }
+        } catch (err) {
+          console.error('[Together] Signal error:', err);
+        }
+      }
+    );
+
+    // Kirim sinyal inisial + heartbeat agar tidak terlewat jika salah satu pihak belum subscribe
+    if (togetherRole === 'guest') {
+      sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'guest-ready', {});
+    } else if (togetherRole === 'host') {
+      sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'host-ready', { layout_id: selectedLayout });
+    }
+
+    const readyInterval = setInterval(() => {
+      if (!isMounted) return;
+      if (pc.connectionState !== 'connected' && pc.iceConnectionState !== 'connected') {
+        if (togetherRole === 'guest') {
+          sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'guest-ready', {});
+        } else if (togetherRole === 'host') {
+          sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'host-ready', { layout_id: selectedLayout });
+        }
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(readyInterval);
+      unsubscribeSignals?.();
+      if (dataChannelRef.current) {
+        try { dataChannelRef.current.close(); } catch (e) {}
+        dataChannelRef.current = null;
+      }
+      pc.close();
+      peerConnectionRef.current = null;
+      setTogetherPeerConnected(false);
+    };
+  }, [currentView, selectedMode, togetherRoomId, togetherRole, stream, togetherPeerId, supabase, timerDuration]);
+
+  useEffect(() => {
+    if (remoteStreamRef.current) {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        remoteVideoRef.current.onloadedmetadata = () => {
+          remoteVideoRef.current.play().catch((e) => console.error('Remote play blocked:', e));
+        };
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStreamRef.current;
+        remoteAudioRef.current.play().catch((e) => console.error('Remote audio blocked:', e));
+      }
+    }
+  }, [togetherPeerConnected, currentView]);
+
+  const triggerTransition = (callback) => {
+    setIsViewTransitioning(true);
+    setTimeout(() => {
+      callback();
+      setTimeout(() => {
+        setIsViewTransitioning(false);
+      }, 30);
+    }, 120);
+  };
   const handleStart = () => triggerTransition(() => setCurrentView('layout'));
   const handleLayoutConfirm = () => selectedLayout && triggerTransition(() => setCurrentView('mode'));
   const handleModeConfirm = () => {
@@ -1159,16 +1987,18 @@ const App = () => {
     setUseMockCamera(false);
     if (selectedMode === 'original') triggerTransition(() => setCurrentView('camera-session')); 
     else if (selectedMode === 'character') triggerTransition(() => setCurrentView('anime'));
+    else if (selectedMode === 'together') triggerTransition(() => setCurrentView('together-setup'));
   };
   const handleAnimeSelect = (id) => { setSelectedAnime(id); triggerTransition(() => setCurrentView('frame')); };
   const handleFrameConfirm = () => triggerTransition(() => setCurrentView('camera-session'));
   const handleToTemplateSelection = () => {
-      const validTemplates = stripTemplates.filter(t => t.layoutId === selectedLayout);
-      setSelectedTemplateCategory(null);
-      if (validTemplates.length > 0 && selectedTemplate.layoutId !== selectedLayout) {
-          setSelectedTemplate(validTemplates[0]);
+      const defaultCat = (selectedMode === 'character' && selectedAnime === 'genshin') ? 'genshin' : 'aestho';
+      setSelectedTemplateCategory(defaultCat);
+      const categoryTemplates = getTemplateCategoryItems(defaultCat);
+      if (categoryTemplates.length > 0) {
+          setSelectedTemplate(categoryTemplates[0]);
       }
-      setCurrentView('template-selection');
+      triggerTransition(() => setCurrentView('template-selection'));
   };
   
   const handleToStickerEditor = () => {
@@ -1176,28 +2006,28 @@ const App = () => {
           showToast('Pilih koleksi frame dulu: Aestho atau Genshin.');
           return;
       }
-
-      setCurrentView('sticker-editor');
+      triggerTransition(() => setCurrentView('sticker-editor'));
   };
   
-  const handleBackToTemplate = () => setCurrentView('template-selection');
+  const handleBackToTemplate = () => triggerTransition(() => setCurrentView('template-selection'));
   
   const handleToFinalResult = () => {
       setActiveStickerId(null);
       setQrResultUrl('');
       setQrGenerationMessage('');
       autoQRStartedRef.current = false;
-      setCurrentView('final-result'); 
+      triggerTransition(() => setCurrentView('final-result')); 
   };
-  const handleBackToHome = () => { setCurrentView('home'); setSelectedLayout(null); };
-  const handleBackToLayout = () => { setCurrentView('layout'); setSelectedMode(null); };
-  const handleBackToMode = () => { setCurrentView('mode'); setSelectedAnime(null); };
-  const handleBackToModeFromAnime = () => { setCurrentView('mode'); setSelectedAnime(null); };
-  const handleBackToAnimeFromFrame = () => { setCurrentView('anime'); setSelectedFrame(null); };
+  const handleBackToHome = () => triggerTransition(() => { setCurrentView('home'); setSelectedLayout(null); });
+  const handleBackToLayout = () => triggerTransition(() => { setCurrentView('layout'); setSelectedMode(null); });
+  const handleBackToMode = () => triggerTransition(() => { setCurrentView('mode'); setSelectedAnime(null); });
+  const handleBackToModeFromAnime = () => triggerTransition(() => { setCurrentView('mode'); setSelectedAnime(null); });
+  const handleBackToAnimeFromFrame = () => triggerTransition(() => { setCurrentView('anime'); setSelectedFrame(null); });
 
   const handleBackFromCamera = () => {
-      if (selectedMode === 'character') setCurrentView('frame');
-      else setCurrentView('mode');
+      if (selectedMode === 'character') triggerTransition(() => setCurrentView('frame'));
+      else if (selectedMode === 'together') triggerTransition(() => setCurrentView('together-setup'));
+      else triggerTransition(() => setCurrentView('mode'));
   };
 
   const scrollCharacterList = (direction) => {
@@ -1250,7 +2080,62 @@ const App = () => {
     }
     if (!selectedType) return;
     try {
-        const recorder = new MediaRecorder(stream, { mimeType: selectedType });
+        let streamToRecord = stream;
+
+        if (selectedMode === 'together') {
+          const W = 640;
+          const H = 480;
+          const HALF = 320;
+          if (!togetherCanvasRef.current) {
+            togetherCanvasRef.current = document.createElement('canvas');
+            togetherCanvasRef.current.width = W;
+            togetherCanvasRef.current.height = H;
+          }
+          const canvas = togetherCanvasRef.current;
+          const ctx = canvas.getContext('2d', { alpha: false });
+
+          const hostVideo = togetherRole === 'host' ? videoRef.current : remoteVideoRef.current;
+          const guestVideo = togetherRole === 'guest' ? videoRef.current : remoteVideoRef.current;
+
+          const renderSide = (videoEl, xOffset) => {
+            if (!videoEl || !videoEl.videoWidth || videoEl.videoWidth === 0) {
+              ctx.fillStyle = '#18181b';
+              ctx.fillRect(xOffset, 0, HALF, H);
+              return;
+            }
+            const vw = videoEl.videoWidth;
+            const vh = videoEl.videoHeight;
+            const scale = Math.max(HALF / vw, H / vh);
+            const dw = vw * scale;
+            const dh = vh * scale;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(xOffset, 0, HALF, H);
+            ctx.clip();
+            ctx.translate(xOffset + HALF, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(videoEl, (HALF - dw) / 2, (H - dh) / 2, dw, dh);
+            ctx.restore();
+          };
+
+          const drawTogetherFrame = () => {
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(0, 0, W, H);
+            renderSide(hostVideo, 0);
+            renderSide(guestVideo, HALF);
+          };
+
+          drawTogetherFrame();
+          if (togetherRecordIntervalRef.current) {
+            clearInterval(togetherRecordIntervalRef.current);
+          }
+          togetherRecordIntervalRef.current = setInterval(drawTogetherFrame, 1000 / 25);
+
+          streamToRecord = canvas.captureStream ? canvas.captureStream(25) : canvas.mozCaptureStream(25);
+        }
+
+        const recorder = new MediaRecorder(streamToRecord, { mimeType: selectedType });
         chunksRef.current = [];
         recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         recorder.onstop = () => {
@@ -1264,6 +2149,10 @@ const App = () => {
   };
 
   const stopRecording = () => {
+      if (togetherRecordIntervalRef.current) {
+          clearInterval(togetherRecordIntervalRef.current);
+          togetherRecordIntervalRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.stop();
       } else if (useMockCamera) {
@@ -1273,19 +2162,27 @@ const App = () => {
 
   const handleShutterClick = () => {
     if (isCountingDown || capturedPhotos.length >= MAX_PHOTOS) return;
-    setIsCountingDown(true);
-    setCountdownValue(timerDuration);
-    startRecording();
-    const timerInterval = setInterval(() => {
-      setCountdownValue((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerInterval);
-          takePhoto();
-          return 0;
-        }
-        return prev - 1;
+
+    if (selectedMode === 'together') {
+      if (togetherRole === 'guest') {
+        showToast('Hanya Host yang dapat memulai pengambilan foto.');
+        return;
+      }
+      sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'capture-trigger', {
+        duration: timerDuration,
       });
-    }, 1000);
+    }
+
+    startTogetherCountdown(timerDuration);
+  };
+
+  const handleFilterSelect = (filter) => {
+    setCurrentFilter(filter);
+    if (selectedMode === 'together' && togetherRoomId) {
+      sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'sync-filter', {
+        filterId: filter.id,
+      });
+    }
   };
 
   const optimizeImageToDataUrl = (source, options = {}) => {
@@ -1323,6 +2220,7 @@ const App = () => {
               ctx.drawImage(source, 0, 0, targetW, targetH);
               ctx.restore();
 
+
               resolve(canvas.toDataURL('image/jpeg', quality));
           } catch (err) {
               console.warn('Gagal optimasi foto, memakai cara biasa:', err);
@@ -1349,6 +2247,24 @@ const App = () => {
         return;
     }
 
+    if (selectedMode === 'together') {
+      if (togetherRole === 'guest') {
+        // Guest menunggu sinkronisasi foto dari Host agar hasil foto strip 100% identik
+        return;
+      }
+      try {
+        const hostVideo = videoRef.current;
+        const guestVideo = remoteVideoRef.current;
+        const imgUrl = await captureTogetherFrame(hostVideo, guestVideo, {
+          filter: currentFilter.style || 'none',
+        });
+        if (imgUrl) handlePhotoCaptured(imgUrl);
+      } catch (err) {
+        console.error('[Together] takePhoto error:', err);
+      }
+      return;
+    }
+
     if (videoRef.current) {
       try {
         // Preview filter hanya CSS di <video>, jadi filter tetap diterapkan ke canvas.
@@ -1365,10 +2281,54 @@ const App = () => {
   const handlePhotoCaptured = (imgUrl) => {
       const newPhotos = [...capturedPhotos, imgUrl];
       setCapturedPhotos(newPhotos);
-      if (newPhotos.length >= MAX_PHOTOS) {
+      const isFinished = newPhotos.length >= MAX_PHOTOS;
+
+      if (selectedMode === 'together' && togetherRole === 'host') {
+        const photoIndex = newPhotos.length - 1;
+        const syncPayload = {
+          photoUrl: imgUrl,
+          photoIndex,
+          totalPhotos: newPhotos.length,
+          isFinished,
+        };
+
+        // 1. Kirim via WebRTC DataChannel (P2P direct instan) jika terbuka
+        if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+          try {
+            dataChannelRef.current.send(JSON.stringify({
+              type: 'photo-synced',
+              ...syncPayload,
+            }));
+          } catch (e) {
+            console.warn('[Together] DataChannel send failed:', e);
+          }
+        }
+
+        // 2. Kirim via Realtime Broadcast & DB
+        sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'photo-synced', syncPayload);
+
+        // Jika sudah 8 foto, kirim sinyal session-finished
+        if (isFinished) {
+          if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+            try {
+              dataChannelRef.current.send(JSON.stringify({
+                type: 'session-finished',
+                totalPhotos: newPhotos.length,
+                layout_id: selectedLayout,
+              }));
+            } catch (e) {}
+          }
+          sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'session-finished', {
+            totalPhotos: newPhotos.length,
+            layout_id: selectedLayout,
+          });
+        }
+      }
+
+      if (isFinished) {
           triggerTransition(() => setCurrentView('result-selection'));
       }
-  }
+  };
 
   const handleUploadClick = () => { fileInputRef.current.click(); };
 
@@ -1665,8 +2625,15 @@ const App = () => {
       return new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
+          img.referrerPolicy = 'no-referrer';
           img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
+          img.onerror = () => {
+              const fallback = new Image();
+              fallback.referrerPolicy = 'no-referrer';
+              fallback.onload = () => resolve(fallback);
+              fallback.onerror = () => resolve(null);
+              fallback.src = src;
+          };
           img.src = src;
       });
   };
@@ -1921,9 +2888,13 @@ const App = () => {
               const slotVideo = videos[i];
               if (slotVideo && slotVideo.readyState >= 2) {
                   ctx.filter = currentFilter.style || 'none';
-                  ctx.translate(vx + vw, vy);
-                  ctx.scale(-1, 1);
-                  drawImageCover(ctx, slotVideo, 0, 0, vw, vh);
+                  if (selectedMode === 'together') {
+                      drawImageCover(ctx, slotVideo, vx, vy, vw, vh);
+                  } else {
+                      ctx.translate(vx + vw, vy);
+                      ctx.scale(-1, 1);
+                      drawImageCover(ctx, slotVideo, 0, 0, vw, vh);
+                  }
               } else if (photoImages[i]) {
                   ctx.filter = 'none';
                   drawImageCover(ctx, photoImages[i], vx, vy, vw, vh);
@@ -2287,7 +3258,7 @@ const App = () => {
                                                 loop
                                                 muted
                                                 playsInline
-                                                className="w-full h-full object-cover transform scale-x-[-1]"
+                                                className={`w-full h-full object-cover ${mode === 'together' ? '' : 'transform scale-x-[-1]'}`}
                                                 style={{ filter: currentFilter.style || 'none' }}
                                             />
                                         ) : (
@@ -2299,7 +3270,6 @@ const App = () => {
                                         )}
                                         {mode === 'character' && getOverlayImage(characterData, photoData.originalIndex) && (
                                             <img
-                                                crossOrigin="anonymous"
                                                 src={getOverlayImage(characterData, photoData.originalIndex)}
                                                 className={`absolute bottom-0 ${characterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(characterData, photoData.originalIndex)} h-auto pointer-events-none z-10`}
                                                 style={{
@@ -2324,7 +3294,6 @@ const App = () => {
 
                     {template.overlayUrl && (
                         <img
-                            crossOrigin="anonymous"
                             src={template.overlayUrl}
                             alt="Frame overlay"
                             className="absolute inset-0 z-30 pointer-events-none w-full h-full"
@@ -2353,7 +3322,6 @@ const App = () => {
                         >
                             <img
                                 src={stk.url}
-                                crossOrigin="anonymous"
                                 style={{
                                     width: '100%',
                                     height: '100%',
@@ -2385,10 +3353,36 @@ const App = () => {
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         `}</style>
 
-        {/* HEADER LOGO */}
-        {currentView !== 'home' && currentView !== 'camera-session' && (
+        {/* HEADER CONTROLS FOR INITIAL WORKFLOW VIEWS (LAYOUT, MODE, ANIME, FRAME) */}
+        {['layout', 'mode', 'anime', 'frame'].includes(currentView) && (
           <div className="fixed top-0 left-0 w-full p-4 md:p-6 z-[60] pointer-events-none flex items-center justify-between">
-             <img crossOrigin="anonymous" src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Logo" className="h-8 md:h-12 w-auto object-contain pointer-events-auto dark:invert" onError={(e) => { e.target.style.display = 'none'; }} />
+             <div className="pointer-events-auto flex items-center gap-3">
+               <button
+                 onClick={
+                   currentView === 'layout' ? handleBackToHome :
+                   currentView === 'mode' ? handleBackToLayout :
+                   currentView === 'anime' ? handleBackToModeFromAnime :
+                   handleBackToAnimeFromFrame
+                 }
+                 className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+                 title="Kembali"
+               >
+                 <ArrowLeft size={18} />
+               </button>
+               <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+             </div>
+
+             <div className="pointer-events-auto flex items-center gap-2">
+               <LanguageSlider />
+
+               <button
+                 onClick={toggleDarkMode}
+                 className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center"
+                 title="Toggle Theme"
+               >
+                 {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+               </button>
+             </div>
           </div>
         )}
 
@@ -2397,18 +3391,22 @@ const App = () => {
            <img src="https://lh3.googleusercontent.com/d/1FujM1yqU72AGrQbx-tShQBGSd8WQeXFW" alt="Dzev Logo" className="w-12 h-auto md:w-16 drop-shadow-sm grayscale group-hover:grayscale-0 transition-all dark:invert" />
         </div>
 
+        {/* MAIN VIEWS CONTAINER WITH TRANSITION */}
+        <div className={`w-full h-full min-h-full flex flex-col transition-all duration-200 ease-out ${isViewTransitioning ? 'opacity-0 scale-[0.992] translate-y-1 pointer-events-none' : 'opacity-100 scale-100 translate-y-0'}`}>
         {/* --- VIEW 1: HOME --- */}
         {currentView === 'home' && (
-          <main className="relative z-30 flex flex-col items-center justify-center min-h-[100dvh] md:h-full text-center px-4 py-10">
+          <main className="animate-view-enter relative z-30 flex flex-col items-center justify-center min-h-[100dvh] md:h-full text-center px-4 py-10">
              
-             {/* TOGGLE DARK MODE */}
-             <div className="absolute top-6 right-6 md:top-8 md:right-8 z-[70]">
+             {/* TOGGLE DARK MODE & LANGUAGE SLIDER */}
+             <div className="absolute top-6 right-6 md:top-8 md:right-8 z-[70] flex items-center gap-2">
+                <LanguageSlider />
+
                 <button
                   onClick={toggleDarkMode}
-                  className="p-3 md:p-4 rounded-full bg-black/5 dark:bg-white/10 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-all backdrop-blur-md border border-black/10 dark:border-white/10 flex items-center justify-center group shadow-sm"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-all shadow-sm flex items-center justify-center group"
                   title="Toggle Theme"
                 >
-                  {isDarkMode ? <Sun size={20} className="group-hover:rotate-90 transition-transform duration-500" /> : <Moon size={20} className="group-hover:-rotate-12 transition-transform duration-500" />}
+                  {isDarkMode ? <Sun size={15} className="group-hover:rotate-90 transition-transform duration-500" /> : <Moon size={15} className="group-hover:-rotate-12 transition-transform duration-500" />}
                 </button>
              </div>
 
@@ -2416,21 +3414,31 @@ const App = () => {
                  <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black dark:text-white z-10 relative">Aestho</h1>
                  <h1 className="font-title text-5xl md:text-[8rem] leading-none text-black/5 dark:text-white/5 absolute top-2 left-2 blur-sm">Aestho</h1>
              </div>
-             <p className="font-serif text-sm md:text-xl text-black/70 dark:text-white/70 mb-12 italic tracking-wider">"Collecting moments, frame by frame."</p>
+             <p className="font-serif text-sm md:text-xl text-black/70 dark:text-white/70 mb-12 italic tracking-wider">{t.home.tagline}</p>
              <button onClick={handleStart} className="group flex flex-col items-center gap-1 px-6 py-2 uppercase font-modern text-xs md:text-sm tracking-[0.3em] text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer">
-               <span>Enter Studio</span>
+               <span>{t.home.enterStudio}</span>
                <div className="relative w-full h-[1px] mt-1">
                    <div className="absolute inset-0 w-full h-full bg-gray-200 dark:bg-zinc-800"></div>
                    <div className="absolute top-0 left-0 h-full bg-black dark:bg-white w-0 group-hover:w-full transition-all duration-700 ease-out"></div>
                </div>
              </button>
+
+             {/* Footer Privacy Policy Link */}
+             <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex items-center justify-center gap-4 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 z-40">
+               <a
+                 href="/privacy"
+                 className="hover:text-black dark:hover:text-white underline underline-offset-4 decoration-zinc-300 dark:decoration-zinc-700 transition-colors"
+               >
+                 {t.home.privacyPolicy}
+               </a>
+             </div>
           </main>
         )}
 
         {/* --- VIEW 2: LAYOUT SELECTION --- */}
         {currentView === 'layout' && (
-          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
-              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Choose Canvas</h2>
+          <main className="animate-view-enter relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">{t.layout.title}</h2>
               <div className="flex gap-8 md:gap-12 items-center justify-center mb-8 md:mb-16 flex-wrap">
                   {layouts.map((l) => (
                       <div key={l.id} onClick={() => !l.disabled && setSelectedLayout(l.id)} className={`flex flex-col items-center justify-center gap-6 transition-all duration-300 ${l.disabled ? 'cursor-not-allowed opacity-50 grayscale' : 'cursor-pointer group opacity-60 hover:opacity-100'} ${selectedLayout === l.id ? '!opacity-100 scale-105' : ''}`}>
@@ -2445,66 +3453,70 @@ const App = () => {
                                ) : (
                                  <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-400 dark:text-zinc-500">
                                      <span className="font-serif text-4xl md:text-6xl italic">?</span>
-                                     <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed">Coming<br/>Soon</span>
+                                     <span className="font-modern text-[8px] tracking-widest uppercase text-center leading-relaxed whitespace-pre-line">{t.layout.comingSoon}</span>
                                  </div>
                                )}
                           </div>
                           <div className="text-center">
-                            <span className={`font-modern text-xs tracking-widest uppercase block border-b border-transparent pb-1 ${!l.disabled ? 'group-hover:border-black dark:group-hover:border-white' : ''}`}>{l.name}</span>
-                            <span className="font-serif text-[10px] text-gray-500 dark:text-zinc-400 italic mt-1 block">{l.desc}</span>
+                            <span className={`font-modern text-xs tracking-widest uppercase block border-b border-transparent pb-1 ${!l.disabled ? 'group-hover:border-black dark:group-hover:border-white' : ''}`}>
+                              {l.id === 'classic-white' ? t.layout.classicStripName : l.id === 'grid-4r' ? t.layout.poster4rName : l.name}
+                            </span>
+                            <span className="font-serif text-[10px] text-gray-500 dark:text-zinc-400 italic mt-1 block">
+                              {l.id === 'classic-white' ? t.layout.classicStripDesc : l.id === 'grid-4r' ? t.layout.poster4rDesc : l.desc}
+                            </span>
                           </div>
                       </div>
                   ))}
               </div>
-              <div className="flex gap-8">
-                   <button onClick={handleBackToHome} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
-                   {selectedLayout && <button onClick={handleLayoutConfirm} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors">Next</button>}
+              <div className="flex justify-center">
+                   {selectedLayout && <button onClick={handleLayoutConfirm} className="bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-full font-modern text-xs uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors shadow-md">{t.layout.next}</button>}
               </div>
           </main>
         )}
 
         {/* --- VIEW 3: MODE SELECTION --- */}
         {currentView === 'mode' && (
-          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
-              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Select Style</h2>
+          <main className="animate-view-enter relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+              <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">{t.mode.title}</h2>
               <div className="flex gap-4 md:gap-6 mb-8 md:mb-16 flex-wrap justify-center w-full">
                   {modes.map((m) => (
-                        <div key={m.id} onClick={() => setSelectedMode(m.id)} className={`cursor-pointer border rounded-xl p-5 md:p-8 w-full max-w-xs md:w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 dark:ring-zinc-600 scale-105' : 'opacity-70 hover:opacity-100'}`}>
+                        <div
+                          key={m.id}
+                          onClick={() => setSelectedMode(m.id)}
+                          className={`cursor-pointer border rounded-xl p-5 md:p-8 w-full max-w-xs md:w-64 text-center transition-all ${m.style} ${selectedMode === m.id ? 'ring-2 ring-offset-2 ring-gray-300 dark:ring-zinc-600 scale-105' : 'opacity-70 hover:opacity-100'}`}
+                        >
                           <div className="mb-4 flex justify-center">{m.icon}</div>
                           <h3 className="font-modern text-sm font-bold uppercase mb-2">{m.name}</h3>
                           <p className="font-serif text-sm italic opacity-80">{m.desc}</p>
                       </div>
                   ))}
               </div>
-              <div className="flex gap-8">
-                   <button onClick={handleBackToLayout} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
-                   {selectedMode && <button onClick={handleModeConfirm} className="bg-black text-white dark:bg-white dark:text-black px-6 py-2 font-modern text-[10px] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors">Next</button>}
+              <div className="flex justify-center">
+                   {selectedMode && <button onClick={handleModeConfirm} className="bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-full font-modern text-xs uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors shadow-md">{t.mode.next}</button>}
               </div>
           </main>
         )}
 
         {/* --- VIEW 4: ANIME SELECTION --- */}
         {currentView === 'anime' && (
-          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
+          <main className="animate-view-enter relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full px-5 md:px-6 pt-24 pb-10 md:py-0 overflow-y-auto md:overflow-visible">
               <h2 className="font-serif text-3xl md:text-4xl italic mb-8 md:mb-12">Pick Partner</h2>
               <div className="w-full flex justify-center items-center relative max-w-4xl px-0 md:px-8 mb-8 md:mb-16">
                    <div ref={animeListRef} className="w-full overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory px-4 flex gap-6 items-center scroll-smooth justify-start md:justify-center">
-                      {animeOptions.map((a) => (
-                          <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 dark:border-zinc-700 rounded-xl p-5 md:p-6 w-32 h-40 md:w-40 md:h-48 flex flex-col items-center justify-between bg-white dark:bg-zinc-900 transition-all ${a.color} hover:border-black dark:hover:border-zinc-500 shadow-sm group`}>
-                               <div className="opacity-50">{a.icon}</div>
-                               <img crossOrigin="anonymous" src={a.logoUrl} alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
-                               <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black dark:group-hover:text-white`}>{a.name}</span>
+                      {allAnimeOptions.map((a) => (
+                          <div key={a.id} onClick={() => handleAnimeSelect(a.id)} className={`flex-shrink-0 snap-center cursor-pointer border border-gray-200 dark:border-zinc-700 rounded-xl p-5 md:p-6 w-32 h-40 md:w-40 md:h-48 flex flex-col items-center justify-center gap-4 bg-white dark:bg-zinc-900 transition-all ${a.color} hover:border-black dark:hover:border-zinc-500 shadow-sm group`}>
+                                <img src={a.logoUrl} referrerPolicy="no-referrer" alt={a.name} className="max-w-[80%] max-h-16 object-contain grayscale hover:grayscale-0 transition-all"/>
+                                <span className={`font-modern text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 group-hover:text-black dark:group-hover:text-white`}>{a.name}</span>
                           </div>
                       ))}
                   </div>
               </div>
-              <button onClick={handleBackToModeFromAnime} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase transition-colors">Back</button>
           </main>
         )}
 
         {/* --- VIEW 5: FRAME SELECTION --- */}
         {currentView === 'frame' && currentAnimeData && (
-          <main className="relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full pt-24 md:pt-0 pb-32 md:pb-0 overflow-y-auto md:overflow-visible">
+          <main className="animate-view-enter relative z-30 flex flex-col items-center justify-start md:justify-center min-h-[100dvh] md:h-full w-full pt-24 md:pt-0 pb-32 md:pb-0 overflow-y-auto md:overflow-visible">
               <div className="text-center mb-6 md:mb-8 px-4">
                   <p className="font-modern text-[10px] tracking-[0.3em] text-gray-400 dark:text-zinc-500 uppercase mb-2">Selected Layout: {currentLayoutData?.name}</p>
                   <h2 className="font-serif text-3xl md:text-4xl italic">Choose Character</h2>
@@ -2521,7 +3533,7 @@ const App = () => {
                                         {[...Array(4)].map((_, i) => (
                                             <div key={i} className="flex-1 bg-zinc-50 dark:bg-white relative overflow-hidden border border-zinc-100 shadow-inner">
                                                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:8px_8px]"></div>
-                                                {getOverlayImage(char, i * 2) && ( <img crossOrigin="anonymous" src={getOverlayImage(char, i * 2)} alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none', ...getOverlayInlineStyle(char, i * 2) }} /> )}
+                                                {getOverlayImage(char, i * 2) && ( <img src={getOverlayImage(char, i * 2)} referrerPolicy="no-referrer" alt={char.name} className={`absolute bottom-0 ${char.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(char, i * 2)} h-auto object-contain z-10 mix-blend-darken`} style={{ pointerEvents: 'none', ...getOverlayInlineStyle(char, i * 2) }} /> )}
                                             </div>
                                         ))}
                                     </div>
@@ -2533,25 +3545,100 @@ const App = () => {
                    </div>
                    <button onClick={() => scrollCharacterList('right')} className="absolute right-2 md:right-0 z-20 w-10 h-10 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black hover:border-black transition-all duration-300 hidden md:flex"><ChevronRight size={16} /></button>
               </div>
-              <div className="fixed bottom-0 left-0 w-full flex flex-col md:flex-row justify-center gap-3 md:gap-8 items-center bg-gradient-to-t from-white via-white dark:from-[#0a0a0a] dark:via-[#0a0a0a] to-transparent pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-8 px-4">
-                   <button onClick={handleBackToAnimeFromFrame} className="font-modern text-[10px] text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase flex items-center gap-2 order-2 md:order-1 transition-colors"><ArrowLeft size={12}/> Select Series</button>
-                  {selectedFrame && ( <button onClick={handleFrameConfirm} className="bg-black text-white dark:bg-white dark:text-black px-10 py-3 font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-all flex items-center gap-3 order-1 md:order-2 w-full md:w-auto justify-center border border-black dark:border-white hover:invert dark:hover:invert-0">Start Session</button> )}
+              <div className="fixed bottom-0 left-0 w-full flex justify-center items-center bg-gradient-to-t from-white via-white dark:from-[#0a0a0a] dark:via-[#0a0a0a] to-transparent pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pb-8 px-4">
+                  {selectedFrame && ( <button onClick={handleFrameConfirm} className="bg-black text-white dark:bg-white dark:text-black px-10 py-3 rounded-full font-modern text-xs tracking-[0.2em] uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-all flex items-center gap-3 w-full md:w-auto justify-center border border-black dark:border-white shadow-lg">Start Session</button> )}
               </div>
           </main>
         )}
 
+        {/* --- VIEW: TOGETHER SETUP --- */}
+        {currentView === 'together-setup' && (
+          <TogetherSetupView
+            supabase={supabase}
+            peerId={togetherPeerId}
+            initialRoomCode={initialTogetherCode}
+            selectedLayout={selectedLayout || 'classic-white'}
+            onBack={() => {
+              if (isTogetherPath) {
+                window.location.href = '/';
+              } else {
+                triggerTransition(() => setCurrentView('mode'));
+              }
+            }}
+            onConnected={({ roomId, role, layoutId }) => {
+              setTogetherRoomId(roomId);
+              setTogetherRole(role);
+              if (layoutId) {
+                setSelectedLayout(layoutId);
+                const targetCount = layoutId === 'grid-4r' ? 6 : 4;
+                setSelectedStripPhotos(Array(targetCount).fill(null));
+              }
+              triggerTransition(() => setCurrentView('camera-session'));
+            }}
+            showToast={showToast}
+            isDarkMode={isDarkMode}
+            toggleDarkMode={toggleDarkMode}
+            t={t}
+          />
+        )}
+
         {/* --- VIEW 6: CAMERA SESSION --- */}
         {currentView === 'camera-session' && (
-          <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 dark:bg-[#0a0a0a] overflow-y-auto md:overflow-hidden justify-start md:justify-between">
+          <main className="animate-view-enter relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full bg-zinc-50 dark:bg-[#0a0a0a] overflow-y-auto md:overflow-hidden justify-start md:justify-between">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100 via-zinc-50 to-white dark:hidden pointer-events-none"></div>
               <div className="w-full p-4 md:p-6 z-20 flex justify-between items-center text-zinc-400 dark:text-zinc-500">
                   <div className="flex gap-4 items-center">
-                      <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"><ArrowLeft size={20} /></button>
-                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tighter">Aestho.</span>
+                      <button onClick={handleBackFromCamera} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0" title="Kembali"><ArrowLeft size={18} /></button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
                       <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden md:block"></div>
                       <span className="font-modern text-[10px] uppercase tracking-[0.3em] hidden md:block">{currentLayoutData?.name}</span>
+                      {selectedMode === 'together' && (
+                        <>
+                          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden sm:block"></div>
+                          <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400 hidden sm:inline-flex items-center gap-1.5">
+                            <span>Room: {togetherRoomId}</span>
+                            <button type="button" onClick={copyTogetherInviteLink} className="hover:text-black dark:hover:text-white transition-colors" title="Salin Link">
+                              <Copy size={11} />
+                            </button>
+                          </span>
+                          {togetherPeerConnected ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 text-[9px] font-mono font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Connected
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 text-[9px] font-mono">
+                              <Loader2 size={9} className="animate-spin" />
+                              Waiting...
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={toggleMic}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold transition-all border shadow-sm ${
+                              isMicOn
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+                            }`}
+                            title={isMicOn ? 'Matikan Mikrofon' : 'Nyalakan Mikrofon'}
+                          >
+                            {isMicOn ? <Mic size={11} className="text-emerald-500" /> : <MicOff size={11} className="text-rose-500" />}
+                            <span>{isMicOn ? 'Mic ON' : 'Muted'}</span>
+                          </button>
+                        </>
+                      )}
                   </div>
-                  <button onClick={() => window.location.reload()} className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors opacity-50 hover:opacity-100"><RefreshCw size={16}/></button>
+                  <div className="flex items-center gap-2">
+                    <LanguageSlider />
+                    <button
+                      onClick={toggleDarkMode}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center shrink-0"
+                      title="Toggle Theme"
+                    >
+                      {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+                    </button>
+                    <button onClick={() => window.location.reload()} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-400 hover:text-black dark:hover:text-white transition-colors" title="Reload"><RefreshCw size={16}/></button>
+                  </div>
               </div>
               <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-start md:justify-center px-3 py-2 md:p-4 gap-3 md:gap-4 relative z-10 min-h-0 md:h-full overflow-visible md:overflow-hidden">
                   <div className="flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full shrink-0">
@@ -2562,7 +3649,72 @@ const App = () => {
                           {useMockCamera ? ( <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-zinc-900 text-gray-500"><span className="font-mono text-xs">Mock Camera Active</span></div> ) : (
                               <>
                                   {isCameraLoading && <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-zinc-900 z-20"><Loader2 className="animate-spin text-zinc-300 dark:text-zinc-600"/></div>}
-                                  {!cameraError ? ( <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0" style={{ filter: currentFilter.style }} /> ) : (
+                                  {!cameraError ? (
+                                    selectedMode === 'together' ? (
+                                      <div className="absolute inset-0 flex bg-zinc-950">
+                                        <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+                                        {/* Sisi Kiri: HOST */}
+                                        <div className="relative w-1/2 h-full overflow-hidden bg-zinc-900 flex items-center justify-center">
+                                          <video
+                                            ref={togetherRole === 'host' ? videoRef : remoteVideoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted={togetherRole === 'host'}
+                                            className="w-full h-full object-cover transform -scale-x-100"
+                                            style={{ filter: currentFilter.style }}
+                                          />
+                                          {togetherRole === 'guest' && !togetherPeerConnected && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-zinc-950/90 text-white p-4 text-center z-10">
+                                              <Loader2 size={26} className="text-zinc-400 animate-spin" />
+                                              <div>
+                                                <p className="font-modern text-[9px] tracking-widest uppercase font-bold text-zinc-200">Menghubungkan ke Host...</p>
+                                                <p className="font-mono text-[9px] text-zinc-400 mt-0.5">Room: {togetherRoomId}</p>
+                                              </div>
+                                            </div>
+                                          )}
+                                          <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 border border-white/10 select-none shadow-sm z-10">
+                                            {togetherRole === 'host' ? 'YOU (HOST)' : 'HOST'}
+                                          </div>
+                                        </div>
+
+                                        {/* Garis Pemisah Tengah */}
+                                        <div className="w-[1.5px] h-full bg-white/20 dark:bg-zinc-700/50 z-10 pointer-events-none" />
+
+                                        {/* Sisi Kanan: GUEST */}
+                                        <div className="relative w-1/2 h-full overflow-hidden bg-zinc-900 flex items-center justify-center">
+                                          <video
+                                            ref={togetherRole === 'guest' ? videoRef : remoteVideoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted={togetherRole === 'guest'}
+                                            className="w-full h-full object-cover transform -scale-x-100"
+                                            style={{ filter: currentFilter.style }}
+                                          />
+                                          {togetherRole === 'host' && !togetherPeerConnected && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-zinc-950/90 text-white p-4 text-center z-10">
+                                              <Users size={30} className="text-zinc-400 animate-pulse" />
+                                              <div>
+                                                <p className="font-modern text-[9px] tracking-widest uppercase font-bold text-zinc-200">Menunggu Teman...</p>
+                                                <p className="font-mono text-[9px] text-zinc-400 mt-0.5">Room: {togetherRoomId}</p>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={copyTogetherInviteLink}
+                                                className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[9px] font-mono flex items-center gap-1.5 border border-white/20 transition-all text-white active:scale-95 shadow-sm"
+                                              >
+                                                <Copy size={11} /> Salin Link
+                                              </button>
+                                            </div>
+                                          )}
+                                          <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] font-mono text-white/90 border border-white/10 select-none shadow-sm z-10">
+                                            {togetherRole === 'guest' ? 'YOU' : 'GUEST'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0" style={{ filter: currentFilter.style }} />
+                                    )
+                                  ) : (
                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2 bg-zinc-50 dark:bg-zinc-900 z-0">
                                       <Camera size={32} />
                                       <p className="font-modern text-[10px]">Camera Error</p>
@@ -2573,7 +3725,7 @@ const App = () => {
                           {selectedMode === 'character' && (
                           <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                               {getCameraOverlay(selectedCharacterData, capturedPhotos.length) && (
-                                  <img crossOrigin="anonymous" src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} alt="Frame Overlay" 
+                                  <img src={getCameraOverlay(selectedCharacterData, capturedPhotos.length)} referrerPolicy="no-referrer" alt="Frame Overlay" 
                                       className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, capturedPhotos.length)} ${selectedCharacterData.cameraStyles?.[Math.floor(capturedPhotos.length/2)] || ''} h-auto object-contain object-bottom-left`}
                                       style={{ mixBlendMode: 'normal', filter: currentFilter.style === 'none' ? 'none' : `${currentFilter.style} brightness(1.1)`, ...getOverlayInlineStyle(selectedCharacterData, capturedPhotos.length) }} />
                               )}
@@ -2587,7 +3739,7 @@ const App = () => {
                           <div key={i} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 shadow-sm relative bg-white flex-shrink-0">
                                <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded backdrop-blur-sm z-20">#{i+1}</div>
                                <CoverPhoto src={photo} className="w-full h-full z-0 relative" alt={`Captured ${i}`} />
-                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Overlay Mini" /> )}
+                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} referrerPolicy="no-referrer" className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Overlay Mini" /> )}
                           </div>
                       ))}
                       {[...Array(Math.max(0, 8 - capturedPhotos.length))].map((_, i) => ( <div key={`empty-${i}`} className="w-16 sm:w-20 md:w-full aspect-[4/3] rounded border border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-zinc-300 dark:text-zinc-600 bg-white/50 dark:bg-zinc-800/50 flex-shrink-0"><span className="text-[8px]">{capturedPhotos.length + i + 1}</span></div> ))}
@@ -2596,22 +3748,49 @@ const App = () => {
               <div className="w-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 md:pb-8 md:pt-4 flex justify-center items-center gap-3 sm:gap-6 md:gap-12 z-20">
                    <div className="flex flex-col items-center gap-2 md:gap-3">
                        <div className="flex gap-2 md:gap-3 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md px-3 py-2 md:px-4 md:py-2 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                          {filters.map(f => ( <button key={f.id} onClick={() => setCurrentFilter(f)} className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white scale-110 shadow-md' : 'text-zinc-400 dark:text-zinc-500 border-transparent hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-white dark:hover:bg-zinc-800'}`}>{f.name[0]}</button> ))}
+                          {filters.map(f => ( <button key={f.id} onClick={() => handleFilterSelect(f)} className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all text-[8px] md:text-[10px] font-bold font-mono border ${currentFilter.id === f.id ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white scale-110 shadow-md' : 'text-zinc-400 dark:text-zinc-500 border-transparent hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-white dark:hover:bg-zinc-800'}`}>{f.name[0]}</button> ))}
                        </div>
                        <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Tone</span>
                    </div>
+                   {selectedMode === 'together' && (
+                       <div className="flex flex-col items-center gap-2 md:gap-3">
+                           <button
+                               type="button"
+                               onClick={toggleMic}
+                               className={`h-10 w-10 md:h-12 md:w-12 rounded-full border flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                                   isMicOn
+                                       ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25'
+                                       : 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/25'
+                               }`}
+                               title={isMicOn ? 'Matikan Mikrofon' : 'Nyalakan Mikrofon'}
+                           >
+                               {isMicOn ? <Mic size={18} /> : <MicOff size={18} />}
+                           </button>
+                           <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">{isMicOn ? 'Mic ON' : 'Muted'}</span>
+                       </div>
+                   )}
                    <div className="flex flex-col items-center gap-2 md:gap-3">
                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept="image/*" />
                        <button onClick={handleUploadClick} className="h-10 w-10 md:h-12 md:w-12 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md flex items-center justify-center hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all text-zinc-600 dark:text-zinc-400 shadow-sm"><Upload size={16} className="md:w-5 md:h-5"/></button>
                        <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Upload</span>
                    </div>
-                   <div className="relative group">
-                       <button onClick={handleShutterClick} className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
-                          <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800 dark:border-zinc-200'} flex items-center justify-center`}>
-                              {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 dark:bg-white transition-transform duration-300 group-hover:scale-90"></div>}
-                          </div>
-                       </button>
-                   </div>
+                   {selectedMode === 'together' && togetherRole === 'guest' ? (
+                       <div className="flex flex-col items-center gap-1.5 px-5 py-3 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm text-center">
+                           <div className="flex items-center gap-2">
+                               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping" />
+                               <span className="font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Menunggu Host</span>
+                           </div>
+                           <span className="text-[9px] text-zinc-500 dark:text-zinc-400">Host yang mengontrol shutter</span>
+                       </div>
+                   ) : (
+                       <div className="relative group">
+                           <button onClick={handleShutterClick} className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
+                              <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800 dark:border-zinc-200'} flex items-center justify-center`}>
+                                  {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 dark:bg-white transition-transform duration-300 group-hover:scale-90"></div>}
+                              </div>
+                           </button>
+                       </div>
+                   )}
                    <div className="flex flex-col items-center gap-2 md:gap-3">
                        <button onClick={toggleTimer} className="h-10 md:h-12 px-4 md:px-6 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md flex items-center gap-2 md:gap-3 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all font-mono text-xs md:text-sm text-zinc-700 dark:text-zinc-300 font-bold shadow-sm"><Clock size={14} className="opacity-70 md:w-4 md:h-4"/><span>{timerDuration}s</span></button>
                        <span className="font-modern text-[8px] md:text-[10px] tracking-[0.2em] text-zinc-600 dark:text-zinc-400 font-semibold uppercase">Delay</span>
@@ -2622,10 +3801,31 @@ const App = () => {
 
         {/* --- VIEW 7: RESULT SELECTION --- */}
         {currentView === 'result-selection' && (
-            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
+            <main className="animate-view-enter relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
                 <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
-                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Select & Arrange</h1>
-                    <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">CHOOSE FRAME <ArrowRight size={12}/></button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleBackFromCamera}
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+                        title="Kembali"
+                      >
+                        <ArrowLeft size={18} />
+                      </button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+                      <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden sm:block"></div>
+                      <span className="font-modern text-[10px] uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500 hidden sm:inline">Select & Arrange</span>
+                    </div>
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <button onClick={handleToTemplateSelection} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">CHOOSE FRAME <ArrowRight size={12}/></button>
+                      <LanguageSlider />
+                      <button
+                        onClick={toggleDarkMode}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center shrink-0"
+                        title="Toggle Theme"
+                      >
+                        {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+                      </button>
+                    </div>
                 </div>
                 <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full p-4 md:p-8 gap-6 md:gap-12 justify-start md:justify-center items-center overflow-y-visible md:overflow-y-auto pb-10">
                     <div className="flex flex-col gap-2 md:gap-4 flex-shrink-0">
@@ -2639,7 +3839,7 @@ const App = () => {
                                             <>
                                               <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
+                                                  <img src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} referrerPolicy="no-referrer" className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
                                               )}
                                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-6 h-6 md:w-8 md:h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                             </>
@@ -2655,7 +3855,7 @@ const App = () => {
                                             <>
                                               <CoverPhoto src={photoData.url} className="w-full h-full transition-all duration-300 group-hover:brightness-50" alt="Selected" />
                                               {selectedMode === 'character' && getOverlayImage(selectedCharacterData, photoData.originalIndex) && (
-                                                  <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
+                                                  <img src={getOverlayImage(selectedCharacterData, photoData.originalIndex)} referrerPolicy="no-referrer" className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, photoData.originalIndex)} h-auto pointer-events-none z-10`} style={{ mixBlendMode: 'normal', ...getOverlayInlineStyle(selectedCharacterData, photoData.originalIndex) }} alt="Strip Overlay" />
                                               )}
                                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30" onClick={() => handleRemoveFromStrip(index)}><Trash2 className="text-white w-8 h-8 drop-shadow-md hover:scale-110 transition-transform" /></div>
                                             </>
@@ -2674,7 +3874,7 @@ const App = () => {
                                 return (
                                     <div key={i} onClick={() => !isSelected && handleSelectPhoto(photo, i)} className={`w-full aspect-[4/3] bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 relative transition-all overflow-hidden rounded-lg group ${isSelected ? 'opacity-50 cursor-not-allowed grayscale' : 'cursor-pointer hover:ring-2 ring-black dark:hover:ring-white hover:shadow-lg'}`}>
                                         <CoverPhoto src={photo} className="w-full h-full" alt={`Shot ${i}`} />
-                                        {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img crossOrigin="anonymous" src={getOverlayImage(selectedCharacterData, i)} className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} style={{ ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Grid Overlay" /> )}
+                                        {selectedMode === 'character' && getOverlayImage(selectedCharacterData, i) && ( <img src={getOverlayImage(selectedCharacterData, i)} referrerPolicy="no-referrer" className={`absolute bottom-0 ${selectedCharacterData.position === 'right' ? 'right-0' : 'left-0'} ${getOverlayWidth(selectedCharacterData, i)} h-auto object-contain pointer-events-none`} style={{ ...getOverlayInlineStyle(selectedCharacterData, i) }} alt="Grid Overlay" /> )}
                                         {isSelected && ( <div className="absolute inset-0 flex items-center justify-center bg-black/10 dark:bg-white/10"><Check className="text-white w-8 h-8 drop-shadow-md" /></div> )}
                                         <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-sm font-mono opacity-0 group-hover:opacity-100 transition-opacity">SHOT #{i+1}</div>
                                     </div>
@@ -2688,10 +3888,31 @@ const App = () => {
 
         {/* --- VIEW 8: TEMPLATE SELECTION --- */}
         {currentView === 'template-selection' && (
-            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
-                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-20 md:pl-48 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
-                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Choose Frame</h1>
-                    <button onClick={handleToStickerEditor} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">NEXT <ArrowRight size={12}/></button>
+            <main className="animate-view-enter relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden">
+                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 md:relative md:top-auto z-40">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => triggerTransition(() => setCurrentView('result-selection'))}
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+                        title="Kembali"
+                      >
+                        <ArrowLeft size={18} />
+                      </button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+                      <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden sm:block"></div>
+                      <span className="font-modern text-[10px] uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500 hidden sm:inline">Choose Frame</span>
+                    </div>
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <button onClick={handleToStickerEditor} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider">NEXT <ArrowRight size={12}/></button>
+                      <LanguageSlider />
+                      <button
+                        onClick={toggleDarkMode}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center shrink-0"
+                        title="Toggle Theme"
+                      >
+                        {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+                      </button>
+                    </div>
                 </div>
                 <div className="flex-1 flex flex-col md:flex-row w-full h-auto md:h-full justify-start md:justify-center items-center gap-4 md:gap-10 p-4 overflow-y-auto md:overflow-hidden pb-8">
                     <div className="flex-none flex flex-col items-center justify-center w-full md:w-auto h-auto md:h-full relative order-1 md:order-1">
@@ -2752,7 +3973,7 @@ const App = () => {
                                     <LayoutTemplate size={22} />
                                 </div>
                                 <p className="font-modern text-[10px] tracking-[0.24em] text-zinc-400 dark:text-zinc-500 uppercase leading-relaxed">
-                                    Choose Aestho or Genshin frame first
+                                    Choose frame category first
                                 </p>
                             </div>
                         ) : visibleTemplateOptions.length === 0 ? (
@@ -2780,12 +4001,30 @@ const App = () => {
 
         {/* --- VIEW 8.5: STICKER EDITOR --- */}
         {currentView === 'sticker-editor' && (
-            <main className="relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden" onClick={() => setActiveStickerId(null)}>
-                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-20 md:pl-48 bg-white dark:bg-[#111] z-40 sticky top-0 md:relative md:top-auto shadow-sm">
-                    <h1 className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100">Decorate Strip</h1>
-                    <div className="flex gap-2 md:gap-4">
-                        <button onClick={handleBackToTemplate} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] uppercase hidden md:block transition-colors">Back</button>
-                        <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider shadow-md hover:shadow-lg transition-all">FINISH <Check size={12}/></button>
+            <main className="animate-view-enter relative z-30 flex flex-col min-h-[100dvh] md:h-full w-full overflow-y-auto md:overflow-hidden" onClick={() => setActiveStickerId(null)}>
+                <div className="w-full p-3 md:p-6 flex justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#111] z-40 sticky top-0 md:relative md:top-auto shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleBackToTemplate}
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+                        title="Kembali"
+                      >
+                        <ArrowLeft size={18} />
+                      </button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+                      <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden sm:block"></div>
+                      <span className="font-modern text-[10px] uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500 hidden sm:inline">Decorate Strip</span>
+                    </div>
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <button onClick={handleToFinalResult} className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 bg-black text-white dark:bg-white dark:text-black rounded-full text-[10px] md:text-xs font-mono hover:bg-zinc-800 dark:hover:bg-zinc-200 tracking-wider shadow-md hover:shadow-lg transition-all">FINISH <Check size={12}/></button>
+                      <LanguageSlider />
+                      <button
+                        onClick={toggleDarkMode}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center shrink-0"
+                        title="Toggle Theme"
+                      >
+                        {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+                      </button>
                     </div>
                 </div>
                 
@@ -2864,20 +4103,34 @@ const App = () => {
 
         {/* --- VIEW 9: FINAL RESULT --- */}
         {currentView === 'final-result' && (
-          <main className="relative z-30 flex flex-col h-[100dvh] md:h-full w-full overflow-hidden">
-               <div className="w-full p-3 md:p-6 flex justify-between items-center gap-2 md:gap-3 border-b border-zinc-200 dark:border-zinc-800 pl-16 md:pl-48 bg-white dark:bg-[#111] z-20 shadow-sm shrink-0">
-                    <div className="flex gap-4 items-center">
-                      <span className="font-title text-2xl md:text-3xl hidden md:block text-zinc-900 dark:text-zinc-100">Aestho.</span>
-                      <span className="font-modern text-[10px] tracking-widest text-zinc-400 dark:text-zinc-500">FINAL RESULT</span>
+          <main className="animate-view-enter relative z-30 flex flex-col h-[100dvh] md:h-full w-full overflow-hidden">
+               <div className="w-full p-3 md:p-6 flex justify-between items-center gap-2 md:gap-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#111] z-20 shadow-sm shrink-0">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleToStickerEditor}
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-black dark:text-white transition-colors border border-transparent hover:border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0"
+                        title="Kembali ke Editor Stiker"
+                      >
+                        <ArrowLeft size={18} />
+                      </button>
+                      <span className="font-title text-2xl md:text-3xl text-zinc-900 dark:text-zinc-100 tracking-tight leading-none select-none">Aestho.</span>
+                      <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-800 hidden sm:block"></div>
+                      <span className="font-modern text-[10px] uppercase tracking-[0.25em] text-zinc-400 dark:text-zinc-500 hidden sm:inline">{t.finalResult.title}</span>
                     </div>
-                    <div className="flex gap-1.5 md:gap-4 flex-wrap justify-end">
-                        <button onClick={handleToStickerEditor} className="text-zinc-500 hover:text-black dark:hover:text-white font-modern text-[10px] hidden md:block mt-2 md:mt-0 mr-2 transition-colors">BACK</button>
-                        
-                        <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
-                            {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} JPG
+                    <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+                        <button onClick={downloadStaticJPG} disabled={isDownloadingJPG} className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                            {isDownloadingJPG ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} {t.finalResult.downloadJpg}
                         </button>
-                        <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-1.5 md:gap-2 px-2.5 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
-                            {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} VIDEO
+                        <button onClick={downloadLiveVideo} disabled={isDownloadingVideo} className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2 bg-black text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full text-[9px] md:text-xs font-mono hover:bg-zinc-800 tracking-wider disabled:opacity-50 transition-all border border-transparent">
+                            {isDownloadingVideo ? <Loader2 size={12} className="animate-spin"/> : <Download size={12}/>} {t.finalResult.downloadVideo}
+                        </button>
+                        <LanguageSlider />
+                        <button
+                          onClick={toggleDarkMode}
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white transition-colors shadow-sm flex items-center justify-center shrink-0"
+                          title="Toggle Theme"
+                        >
+                          {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
                         </button>
                     </div>
                 </div>
@@ -2924,14 +4177,14 @@ const App = () => {
 
                             <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-8 md:gap-8 lg:gap-9 md:-translate-x-10 lg:-translate-x-16 transition-transform">
                                 <div className="w-full sm:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500">STATIC RESULT</span>
+                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500">{t.finalResult.staticResult}</span>
                                     <div className="transform scale-100 origin-top">
                                       <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.205) : (selectedLayout === 'grid-4r' ? 0.32 : 0.34)} layoutConfig={getLayoutConfig(selectedLayout)} />
                                     </div>
                                 </div>
 
                                 <div className="w-full sm:w-auto flex flex-col items-center gap-3 md:gap-4 shrink-0 overflow-visible">
-                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">LIVE MOMENT <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
+                                    <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">{t.finalResult.liveMoment} <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div></span>
                                     <div className="transform scale-100 origin-top">
                                       <AesthoStrip template={selectedTemplate} photos={selectedStripPhotos} clips={capturedClips} mode={selectedMode} characterData={selectedCharacterData} scale={isMobile ? (selectedLayout === 'grid-4r' ? 0.24 : 0.205) : (selectedLayout === 'grid-4r' ? 0.32 : 0.34)} layoutConfig={getLayoutConfig(selectedLayout)} />
                                     </div>
@@ -2940,7 +4193,7 @@ const App = () => {
 
                             <div className="w-full max-w-[300px] md:w-[300px] lg:w-[310px] mx-auto md:mx-0 flex flex-col items-center gap-3 md:gap-4 shrink-0">
                                 <span className="font-modern text-[10px] tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
-                                    SCAN RESULT
+                                    {t.finalResult.scanResult}
                                     {isGeneratingQR && <Loader2 size={12} className="animate-spin" />}
                                 </span>
 
@@ -2950,15 +4203,15 @@ const App = () => {
 
                                     <div className="relative z-10 p-4 md:p-5 text-center">
                                         <p className="font-modern text-[8px] tracking-[0.28em] text-zinc-400 uppercase mb-1">
-                                            Your QR Code
+                                            {t.finalResult.yourQrCode}
                                         </p>
 
                                         <h3 className="font-title text-3xl md:text-[2.15rem] text-black dark:text-white mb-2">
-                                            Scan Result
+                                            {t.finalResult.scanResult}
                                         </h3>
 
                                         <p className="text-[10px] leading-relaxed text-zinc-500 dark:text-zinc-400 mb-3">
-                                            Scan this code to open your Aestho result page with JPG and Live Moment.
+                                            {t.finalResult.qrDesc}
                                         </p>
 
                                         <div className="min-h-[198px] md:min-h-[210px] rounded-[1.35rem] bg-white border border-zinc-100 shadow-inner flex items-center justify-center p-3">
@@ -2975,7 +4228,7 @@ const App = () => {
                                                     {isGeneratingQR ? (
                                                         <>
                                                             <Loader2 size={24} className="animate-spin" />
-                                                            <span className="font-modern text-[9px] tracking-[0.18em] uppercase">Preparing QR</span>
+                                                            <span className="font-modern text-[9px] tracking-[0.18em] uppercase">{t.finalResult.preparingQr}</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -2984,7 +4237,7 @@ const App = () => {
                                                                 onClick={() => handleGenerateQRCode({ force: true })}
                                                                 className="px-4 py-2 rounded-full bg-black text-white text-[9px] font-mono tracking-widest hover:bg-zinc-800 transition-colors"
                                                             >
-                                                                CREATE QR
+                                                                {t.finalResult.createQr}
                                                             </button>
                                                         </>
                                                     )}
@@ -3007,22 +4260,22 @@ const App = () => {
                                                         rel="noopener noreferrer"
                                                         className="w-full px-5 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-mono text-[8.5px] tracking-widest hover:opacity-80 transition-opacity"
                                                     >
-                                                        OPEN RESULT PAGE
+                                                        {t.finalResult.openResultPage}
                                                     </a>
 
                                                     <button
                                                         onClick={async () => {
                                                             try {
                                                                 await navigator.clipboard.writeText(qrResultUrl);
-                                                                showToast('Link QR berhasil disalin.');
+                                                                showToast(t.finalResult.toastCopied);
                                                             } catch {
-                                                                showToast('Gagal menyalin link QR.');
+                                                                showToast(t.finalResult.toastCopyFailed);
                                                             }
                                                         }}
                                                         className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 font-mono text-[8.5px] tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
                                                     >
                                                         <Copy size={11} />
-                                                        COPY LINK
+                                                        {t.finalResult.copyLink}
                                                     </button>
                                                 </>
                                             )}
@@ -3099,6 +4352,7 @@ const App = () => {
 
           </main>
         )}
+        </div>
 
         {/* --- GLOBAL TOAST NOTIFICATION --- */}
         {toastMessage && (
