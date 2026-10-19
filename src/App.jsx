@@ -10,6 +10,7 @@ import {
   sendTogetherSignal,
   subscribeTogetherSignals,
   captureTogetherFrame,
+  combineTwoSnapshots,
   RTC_CONFIG
 } from './services/togetherRTC';
 import { useTranslation } from './translations';
@@ -1218,6 +1219,17 @@ const App = () => {
   const dataChannelRef = useRef(null);
   const togetherPendingIce = useRef([]);
   const hasRemoteDescRef = useRef(false);
+  const [togetherDiagnostic, setTogetherDiagnostic] = useState({
+    iceState: 'new',
+    connState: 'new',
+    candidateType: 'unknown',
+    hasRemoteTrack: false,
+    remoteVideoPlaying: false,
+    lastHeartbeat: Date.now(),
+    isWaitingSnapshot: false,
+  });
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const pendingGuestSnapshotsRef = useRef(new Map());
   const [isMicOn, setIsMicOn] = useState(true);
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
@@ -1797,36 +1809,86 @@ const App = () => {
 
     pc.ontrack = (event) => {
       if (!isMounted) return;
-      if (event.streams && event.streams[0]) {
-        remoteStreamRef.current = event.streams[0];
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-          remoteVideoRef.current.onloadedmetadata = () => {
-            remoteVideoRef.current.play().catch((e) => console.error('Remote play blocked:', e));
-          };
+      let streamToUse = event.streams && event.streams[0];
+      if (!streamToUse) {
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
         }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch((e) => console.error('Remote audio blocked:', e));
-        }
-        setTogetherPeerConnected(true);
+        remoteStreamRef.current.addTrack(event.track);
+        streamToUse = remoteStreamRef.current;
+      } else {
+        remoteStreamRef.current = streamToUse;
       }
+
+      setTogetherDiagnostic((prev) => ({ ...prev, hasRemoteTrack: true }));
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = streamToUse;
+        remoteVideoRef.current.playsInline = true;
+        remoteVideoRef.current.muted = true;
+        const tryPlay = () => {
+          remoteVideoRef.current.play().then(() => {
+            setTogetherDiagnostic((prev) => ({ ...prev, remoteVideoPlaying: true }));
+          }).catch((e) => console.warn('[Together] Remote video play blocked:', e));
+        };
+        remoteVideoRef.current.onloadedmetadata = tryPlay;
+        tryPlay();
+      }
+
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = streamToUse;
+        remoteAudioRef.current.play().catch((e) => console.warn('[Together] Remote audio play blocked:', e));
+      }
+
+      setTogetherPeerConnected(true);
     };
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && togetherRoomId) {
-        sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'ice-candidate', event.candidate.toJSON());
+      if (event.candidate) {
+        const candStr = event.candidate.candidate || '';
+        let type = 'unknown';
+        if (candStr.includes('typ relay')) type = 'relay (TURN)';
+        else if (candStr.includes('typ srflx')) type = 'srflx (STUN)';
+        else if (candStr.includes('typ host')) type = 'host (LAN)';
+
+        setTogetherDiagnostic((prev) => ({ ...prev, candidateType: type }));
+
+        if (togetherRoomId) {
+          sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'ice-candidate', event.candidate.toJSON());
+        }
       }
     };
 
-    pc.onconnectionstatechange = () => {
+    const updateConnectionState = () => {
       if (!isMounted) return;
-      if (pc.connectionState === 'connected') {
+      const connState = pc.connectionState;
+      const iceState = pc.iceConnectionState;
+      console.log(`[Together RTC] State: conn=${connState}, ice=${iceState}`);
+
+      setTogetherDiagnostic((prev) => ({
+        ...prev,
+        connState,
+        iceState,
+      }));
+
+      const isConnected =
+        connState === 'connected' ||
+        iceState === 'connected' ||
+        iceState === 'completed';
+
+      const isDisconnected =
+        ['disconnected', 'failed', 'closed'].includes(connState) &&
+        ['disconnected', 'failed', 'closed'].includes(iceState);
+
+      if (isConnected) {
         setTogetherPeerConnected(true);
-      } else if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+      } else if (isDisconnected) {
         setTogetherPeerConnected(false);
       }
     };
+
+    pc.onconnectionstatechange = updateConnectionState;
+    pc.oniceconnectionstatechange = updateConnectionState;
 
     const unsubscribeSignals = subscribeTogetherSignals(
       supabase,
@@ -1904,6 +1966,15 @@ const App = () => {
             if (payload?.layout_id) {
               setSelectedLayout(payload.layout_id);
               setSelectedStripPhotos(Array(payload.layout_id === 'grid-4r' ? 6 : 4).fill(null));
+            }
+          } else if (type === 'guest-snapshot' && togetherRole === 'host') {
+            if (payload?.photoIndex !== undefined && payload?.photoUrl) {
+              pendingGuestSnapshotsRef.current.set(payload.photoIndex, payload.photoUrl);
+              console.log(`[Together Host] Snapshot Guest diterima untuk photo #${payload.photoIndex}`);
+              setTogetherDiagnostic((prev) => ({
+                ...prev,
+                lastHeartbeat: Date.now(),
+              }));
             }
           } else if (type === 'photo-synced') {
             handleIncomingSyncedPhoto(payload);
@@ -2168,6 +2239,10 @@ const App = () => {
         showToast('Hanya Host yang dapat memulai pengambilan foto.');
         return;
       }
+      if (!togetherPeerConnected) {
+        showToast('Menunggu teman terhubung terlebih dahulu (Status belum Connected).');
+        return;
+      }
       sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'capture-trigger', {
         duration: timerDuration,
       });
@@ -2248,19 +2323,64 @@ const App = () => {
     }
 
     if (selectedMode === 'together') {
+      const currentPhotoIndex = capturedPhotos.length;
+
+      // 1. Ambil snapshot lokal dari kamera perangkat ini (baik Host maupun Guest)
+      let localPhotoUrl = null;
+      if (videoRef.current) {
+        try {
+          localPhotoUrl = await optimizeImageToDataUrl(videoRef.current, {
+            mirror: true,
+            filter: currentFilter.style || 'none',
+          });
+        } catch (e) {
+          console.error('[Together] Gagal snapshot lokal:', e);
+        }
+      }
+
       if (togetherRole === 'guest') {
-        // Guest menunggu sinkronisasi foto dari Host agar hasil foto strip 100% identik
+        // GUEST: Kirim snapshot lokal berkualitas penuh ke Host via Realtime signal
+        if (localPhotoUrl) {
+          sendTogetherSignal(supabase, togetherRoomId, togetherPeerId, 'guest-snapshot', {
+            photoIndex: currentPhotoIndex,
+            photoUrl: localPhotoUrl,
+          });
+        }
+        // Guest selesai mengambil foto lokalnya dan menunggu foto gabungan 'photo-synced' dari Host
         return;
       }
+
+      // HOST: Menunggu snapshot dari Guest (atau fallback jika timeout), lalu menggabungkan kedua foto
       try {
-        const hostVideo = videoRef.current;
-        const guestVideo = remoteVideoRef.current;
-        const imgUrl = await captureTogetherFrame(hostVideo, guestVideo, {
+        setTogetherDiagnostic((prev) => ({ ...prev, isWaitingSnapshot: true }));
+
+        // Cek apakah snapshot dari Guest sudah diterima di pending map, atau tunggu hingga 2200ms
+        let guestPhoto = pendingGuestSnapshotsRef.current.get(currentPhotoIndex);
+        if (!guestPhoto) {
+          const startTime = Date.now();
+          while (!guestPhoto && Date.now() - startTime < 2200) {
+            await new Promise((r) => setTimeout(r, 100));
+            guestPhoto = pendingGuestSnapshotsRef.current.get(currentPhotoIndex);
+          }
+        }
+
+        // Jika Guest snapshot tidak tiba via sinyal, fallback ke remoteVideoRef jika aktif
+        if (!guestPhoto && remoteVideoRef.current && remoteVideoRef.current.videoWidth > 0) {
+          guestPhoto = remoteVideoRef.current;
+        }
+
+        const combinedUrl = await combineTwoSnapshots(localPhotoUrl || videoRef.current, guestPhoto, {
           filter: currentFilter.style || 'none',
         });
-        if (imgUrl) handlePhotoCaptured(imgUrl);
+
+        setTogetherDiagnostic((prev) => ({ ...prev, isWaitingSnapshot: false }));
+
+        if (combinedUrl) {
+          handlePhotoCaptured(combinedUrl);
+        }
       } catch (err) {
-        console.error('[Together] takePhoto error:', err);
+        console.error('[Together] Host merge photo error:', err);
+        setTogetherDiagnostic((prev) => ({ ...prev, isWaitingSnapshot: false }));
       }
       return;
     }
@@ -3471,6 +3591,72 @@ const App = () => {
               <div className="flex justify-center">
                    {selectedLayout && <button onClick={handleLayoutConfirm} className="bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-full font-modern text-xs uppercase hover:bg-gray-800 dark:hover:bg-zinc-200 transition-colors shadow-md">{t.layout.next}</button>}
               </div>
+
+               {/* WEBRTC DIAGNOSTIC MODAL */}
+               {showDiagnosticModal && (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                   <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 flex flex-col gap-4 text-xs font-mono">
+                     <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                       <div className="flex items-center gap-2">
+                         <div className={`w-2.5 h-2.5 rounded-full ${togetherPeerConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                         <h3 className="font-bold text-sm text-zinc-900 dark:text-white">WebRTC Diagnostics</h3>
+                       </div>
+                       <button type="button" onClick={() => setShowDiagnosticModal(false)} className="p-1 rounded-lg text-zinc-400 hover:text-black dark:hover:text-white">
+                         <X size={16} />
+                       </button>
+                     </div>
+
+                     <div className="space-y-2 text-[11px]">
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">Room ID</span>
+                         <span className="font-bold text-zinc-800 dark:text-zinc-200">{togetherRoomId}</span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">Role</span>
+                         <span className="uppercase font-bold text-zinc-800 dark:text-zinc-200">{togetherRole}</span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">P2P Status</span>
+                         <span className={`font-bold ${togetherPeerConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
+                           {togetherPeerConnected ? 'CONNECTED' : 'WAITING / CONNECTING'}
+                         </span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">ICE State</span>
+                         <span className="font-mono text-zinc-800 dark:text-zinc-200">{togetherDiagnostic.iceState}</span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">Connection State</span>
+                         <span className="font-mono text-zinc-800 dark:text-zinc-200">{togetherDiagnostic.connState}</span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">Jalur NAT Traversal</span>
+                         <span className="font-bold text-zinc-800 dark:text-zinc-200">{togetherDiagnostic.candidateType}</span>
+                       </div>
+                       <div className="flex justify-between py-1 border-b border-zinc-100 dark:border-zinc-800/80">
+                         <span className="text-zinc-400">Remote Video Track</span>
+                         <span className={togetherDiagnostic.hasRemoteTrack ? 'text-emerald-500 font-bold' : 'text-zinc-400'}>
+                           {togetherDiagnostic.hasRemoteTrack ? (togetherDiagnostic.remoteVideoPlaying ? 'PLAYING (LIVE)' : 'RECEIVED') : 'NO TRACK'}
+                         </span>
+                       </div>
+                       <div className="flex justify-between py-1">
+                         <span className="text-zinc-400">Snapshot Antrian</span>
+                         <span className="text-zinc-800 dark:text-zinc-200">{pendingGuestSnapshotsRef.current.size} snapshot</span>
+                       </div>
+                     </div>
+
+                     <div className="pt-2">
+                       <button
+                         type="button"
+                         onClick={() => setShowDiagnosticModal(false)}
+                         className="w-full py-2.5 rounded-xl bg-black text-white dark:bg-white dark:text-black font-bold uppercase text-[10px] tracking-wider"
+                       >
+                         Tutup
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               )}
           </main>
         )}
 
@@ -3602,15 +3788,25 @@ const App = () => {
                             </button>
                           </span>
                           {togetherPeerConnected ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 text-[9px] font-mono font-bold">
+                            <button
+                              type="button"
+                              onClick={() => setShowDiagnosticModal(true)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 text-[9px] font-mono font-bold hover:scale-105 transition-transform"
+                              title="Klik untuk info diagnostik WebRTC"
+                            >
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              Connected
-                            </span>
+                              <span>Connected ({togetherDiagnostic.candidateType === 'relay (TURN)' ? 'TURN' : 'P2P'})</span>
+                            </button>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 text-[9px] font-mono">
+                            <button
+                              type="button"
+                              onClick={() => setShowDiagnosticModal(true)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 text-[9px] font-mono hover:scale-105 transition-transform"
+                              title="Klik untuk info diagnostik WebRTC"
+                            >
                               <Loader2 size={9} className="animate-spin" />
-                              Waiting...
-                            </span>
+                              <span>{togetherDiagnostic.iceState === 'checking' ? 'Connecting...' : 'Waiting Friend...'}</span>
+                            </button>
                           )}
                           <button
                             type="button"
@@ -3659,7 +3855,7 @@ const App = () => {
                                             ref={togetherRole === 'host' ? videoRef : remoteVideoRef}
                                             autoPlay
                                             playsInline
-                                            muted={togetherRole === 'host'}
+                                            muted={true}
                                             className="w-full h-full object-cover transform -scale-x-100"
                                             style={{ filter: currentFilter.style }}
                                           />
@@ -3686,7 +3882,7 @@ const App = () => {
                                             ref={togetherRole === 'guest' ? videoRef : remoteVideoRef}
                                             autoPlay
                                             playsInline
-                                            muted={togetherRole === 'guest'}
+                                            muted={true}
                                             className="w-full h-full object-cover transform -scale-x-100"
                                             style={{ filter: currentFilter.style }}
                                           />
@@ -3732,6 +3928,13 @@ const App = () => {
                           </div>
                           )}
                           {isCountingDown && ( <div className="absolute top-8 right-10 z-100 flex flex-col items-center justify-center pointer-events-none"><span className="font-title text-[5rem] md:text-[8rem] leading-none text-zinc-900 dark:text-white drop-shadow-[0_4px_4px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-pulse">{countdownValue}</span></div> )}
+                          {togetherDiagnostic.isWaitingSnapshot && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white gap-2 pointer-events-none animate-fade-in">
+                              <Loader2 size={32} className="animate-spin text-white" />
+                              <p className="font-mono text-xs uppercase tracking-wider font-bold">Menyinkronkan foto dari Guest...</p>
+                              <span className="text-[10px] text-zinc-400 font-mono">Menggabungkan 2 kamera HD</span>
+                            </div>
+                          )}
                       </div>
                   </div>
                   <div className="flex md:flex-col flex-row w-full max-w-[92vw] md:max-w-none md:w-32 h-16 sm:h-20 md:h-[450px] bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 gap-2 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto hide-scrollbar shadow-inner flex-shrink-0 mt-0 md:mt-8">
@@ -3784,7 +3987,16 @@ const App = () => {
                        </div>
                    ) : (
                        <div className="relative group">
-                           <button onClick={handleShutterClick} className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 shadow-lg ${capturedPhotos.length >= MAX_PHOTOS ? 'opacity-50 cursor-default' : ''}`}>
+                           <button
+                               onClick={handleShutterClick}
+                               disabled={(selectedMode === 'together' && !togetherPeerConnected) || capturedPhotos.length >= MAX_PHOTOS}
+                               className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-700 hover:scale-105 active:scale-95 shadow-lg ${
+                                 (selectedMode === 'together' && !togetherPeerConnected) || capturedPhotos.length >= MAX_PHOTOS
+                                   ? 'opacity-40 cursor-not-allowed'
+                                   : ''
+                               }`}
+                               title={selectedMode === 'together' && !togetherPeerConnected ? 'Menunggu teman terhubung...' : 'Ambil Foto'}
+                            >
                               <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full border-2 ${capturedPhotos.length >= MAX_PHOTOS ? 'border-green-500/50' : 'border-zinc-800 dark:border-zinc-200'} flex items-center justify-center`}>
                                   {capturedPhotos.length >= MAX_PHOTOS ? <Check className="text-green-500 opacity-80" size={24}/> : <div className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 dark:bg-white transition-transform duration-300 group-hover:scale-90"></div>}
                               </div>
