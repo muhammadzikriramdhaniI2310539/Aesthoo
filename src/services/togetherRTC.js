@@ -1,13 +1,52 @@
 // src/services/togetherRTC.js
 // Utility and WebRTC / Realtime service for Aestho Together
 
-export const RTC_CONFIG = {
-  iceServers: [
+export const getRtcConfig = () => {
+  const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-  ],
+  ];
+
+  // Dukungan custom TURN server via environment variable jika ada
+  const customTurnUrl = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TURN_URL : null;
+  const customTurnUsername = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TURN_USERNAME : null;
+  const customTurnCredential = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_TURN_CREDENTIAL : null;
+
+  if (customTurnUrl) {
+    iceServers.push({
+      urls: customTurnUrl,
+      username: customTurnUsername,
+      credential: customTurnCredential,
+    });
+  }
+
+  // Public OpenRelay TURN servers (Metered.ca) untuk NAT Traversal lintas provider seluler & Wi-Fi
+  iceServers.push(
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    }
+  );
+
+  return {
+    iceServers,
+    iceCandidatePoolSize: 10,
+  };
 };
+
+export const RTC_CONFIG = getRtcConfig();
 
 export const generateRoomId = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -255,3 +294,105 @@ export const captureTogetherFrame = (hostVideo, guestVideo, options = {}) => {
     }
   });
 };
+
+/**
+ * Menggabungkan 2 snapshot foto asli (Host di kiri 50%, Guest di kanan 50%)
+ * Masing-masing snapshot adalah dataURL hasil foto lokal dengan resolusi penuh.
+ */
+export const combineTwoSnapshots = (hostSource, guestSource, options = {}) => {
+  return new Promise((resolve) => {
+    try {
+      const W = 1024;
+      const H = 768;
+      const HALF = W / 2; // 512
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(0, 0, W, H);
+
+      const resolveSource = (src) => {
+        return new Promise((res) => {
+          if (!src) return res(null);
+          if (typeof src !== 'string') {
+            // Sudah berupa HTMLVideoElement atau HTMLImageElement atau HTMLCanvasElement
+            return res(src);
+          }
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => res(img);
+          img.onerror = () => res(null);
+          img.src = src;
+        });
+      };
+
+      Promise.all([resolveSource(hostSource), resolveSource(guestSource)]).then(([hostEl, guestEl]) => {
+        const renderSide = (el, xOffset, isGuest) => {
+          if (!el) {
+            ctx.fillStyle = '#1f1f1f';
+            ctx.fillRect(xOffset, 0, HALF, H);
+            ctx.fillStyle = '#555555';
+            ctx.font = 'bold 14px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(isGuest ? 'GUEST PHOTO' : 'HOST PHOTO', xOffset + HALF / 2, H / 2);
+            return;
+          }
+
+          const sw = el.videoWidth || el.naturalWidth || el.width || 640;
+          const sh = el.videoHeight || el.naturalHeight || el.height || 480;
+          if (sw === 0 || sh === 0) {
+            ctx.fillStyle = '#1f1f1f';
+            ctx.fillRect(xOffset, 0, HALF, H);
+            return;
+          }
+
+          const scale = Math.max(HALF / sw, H / sh);
+          const dw = sw * scale;
+          const dh = sh * scale;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(xOffset, 0, HALF, H);
+          ctx.clip();
+
+          if (options.filter && options.filter !== 'none') {
+            ctx.filter = options.filter;
+          }
+
+          // Jika sumbernya HTMLVideoElement, mirror selfie; jika dataURL sudah di-mirror saat capture
+          if (el instanceof HTMLVideoElement) {
+            ctx.translate(xOffset + HALF, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(el, (HALF - dw) / 2, (H - dh) / 2, dw, dh);
+          } else {
+            ctx.drawImage(el, xOffset + (HALF - dw) / 2, (H - dh) / 2, dw, dh);
+          }
+          ctx.restore();
+        };
+
+        renderSide(hostEl, 0, false);
+        renderSide(guestEl, HALF, true);
+
+        // Garis pemisah tengah
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(HALF, 0);
+        ctx.lineTo(HALF, H);
+        ctx.stroke();
+
+        resolve(canvas.toDataURL('image/jpeg', options.quality || 0.85));
+      }).catch((e) => {
+        console.error('[Together] combineTwoSnapshots promise error:', e);
+        resolve(null);
+      });
+    } catch (err) {
+      console.error('[Together] Gagal combineTwoSnapshots:', err);
+      resolve(null);
+    }
+  });
+};
+
